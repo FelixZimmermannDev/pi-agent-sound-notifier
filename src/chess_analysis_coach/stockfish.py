@@ -192,6 +192,9 @@ def _candidate_from_info(
         uci=root_move.uci(),
         evaluation=evaluation,
         principal_variation_san=_variation_to_san(board, variation, line_number=line_number),
+        principal_variation_uci=tuple(
+            move.uci() for move in variation[:_MAX_VARIATION_PLIES]
+        ),
     )
 
 

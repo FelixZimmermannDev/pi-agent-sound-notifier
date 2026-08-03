@@ -77,6 +77,7 @@ def test_stockfish_adapter_transforms_ranked_uci_analysis_and_closes_engine() ->
     assert candidates[0].san == "e4"
     assert candidates[0].evaluation == Evaluation(centipawns=31)
     assert candidates[0].principal_variation_san == ("e4", "e5")
+    assert candidates[0].principal_variation_uci == ("e2e4", "e7e5")
     assert fake_engine.received_fen == board.fen()
     assert fake_engine.received_limit == chess.engine.Limit(time=0.25)
     assert fake_engine.received_multipv == 3

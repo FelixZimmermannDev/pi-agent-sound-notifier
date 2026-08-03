@@ -354,6 +354,48 @@ h2 {
   fill: #e8a44f;
 }
 
+.arrowhead-response {
+  fill: #f0f0e8;
+}
+
+.future-arrow {
+  stroke-linecap: round;
+  stroke-width: 9;
+  stroke-dasharray: 16 11;
+  opacity: 0.72;
+  filter: drop-shadow(0 2px 2px rgb(24 28 19 / 42%));
+}
+
+.future-arrow.response {
+  stroke: #f0f0e8;
+}
+
+.future-arrow.own.rank-1 {
+  stroke: #b8e45f;
+}
+
+.future-arrow.own.rank-2 {
+  stroke: #59b6e8;
+}
+
+.future-arrow.own.rank-3 {
+  stroke: #e8a44f;
+}
+
+.variation-step-circle {
+  fill: #2f302b;
+  stroke: #f2f2e9;
+  stroke-width: 3;
+}
+
+.variation-step-number {
+  fill: #f6f6ef;
+  font-size: 27px;
+  font-weight: 900;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
 .square {
   position: relative;
   display: grid;
@@ -709,11 +751,18 @@ button:disabled {
 }
 
 .explanation,
+.plan,
 .variation {
   margin: 7px 0 0;
   color: var(--muted);
   font-size: 0.8rem;
   line-height: 1.45;
+}
+
+.plan {
+  border-left: 2px solid rgb(172 214 106 / 54%);
+  color: #d9ddcf;
+  padding-left: 8px;
 }
 
 .variation {

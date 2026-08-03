@@ -45,6 +45,7 @@ class DeterministicWebEngine:
                     uci=move.uci(),
                     evaluation=Evaluation(centipawns=30 - rank * 5),
                     principal_variation_san=(san,),
+                    principal_variation_uci=(move.uci(),),
                 )
             )
         return tuple(candidates)
@@ -95,6 +96,8 @@ def test_web_game_tracks_manual_player_move_bot_reply_and_live_advice(
     assert started.is_player_turn
     assert started.recommendation[0].uci == "e2e4"
     assert [candidate.uci for candidate in started.recommendation] == ["e2e4", "g1f3"]
+    assert started.recommendation[0].variation_uci == ("e2e4",)
+    assert started.recommendation[0].plan.startswith("Ziel:")
     assert started.evaluation_bar is not None
     assert started.evaluation_bar.white_percent > 50
 

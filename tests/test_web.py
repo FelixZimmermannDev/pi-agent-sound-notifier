@@ -24,6 +24,7 @@ class WebTestEngine:
                 uci=move.uci(),
                 evaluation=Evaluation(centipawns=30),
                 principal_variation_san=(san,),
+                principal_variation_uci=(move.uci(),),
             ),
         )
 
@@ -63,6 +64,7 @@ def test_local_web_api_serves_page_and_one_complete_turn() -> None:
     assert page.status_code == 200
     assert "Chess Analysis Coach" in page.get_data(as_text=True)
     assert 'id="candidate-arrows"' in page.get_data(as_text=True)
+    assert 'id="future-arrowhead-response"' in page.get_data(as_text=True)
     assert 'id="evaluation-bar"' in page.get_data(as_text=True)
 
     stylesheet = client.get("/static/app.css")

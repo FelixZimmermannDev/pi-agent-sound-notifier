@@ -23,6 +23,7 @@ class CandidateMove:
     uci: str
     evaluation: Evaluation
     principal_variation_san: tuple[str, ...]
+    principal_variation_uci: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

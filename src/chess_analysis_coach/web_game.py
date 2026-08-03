@@ -7,7 +7,7 @@ from typing import Protocol
 import chess
 
 from chess_analysis_coach.application import PositionAnalyzer, recommend_moves
-from chess_analysis_coach.coaching import explain_candidate
+from chess_analysis_coach.coaching import explain_candidate, explain_candidate_plan
 from chess_analysis_coach.errors import InvalidMoveError, SessionStateError
 from chess_analysis_coach.evaluation import (
     EvaluationSummary,
@@ -66,7 +66,9 @@ class CandidateView:
     uci: str
     evaluation: str
     variation: tuple[str, ...]
+    variation_uci: tuple[str, ...]
     explanation: str
+    plan: str
 
 
 @dataclass(frozen=True)
@@ -425,7 +427,9 @@ class LocalWebGame:
                 uci=candidate.uci,
                 evaluation=format_evaluation(candidate.evaluation),
                 variation=candidate.principal_variation_san,
+                variation_uci=candidate.principal_variation_uci,
                 explanation=explain_candidate(board, candidate),
+                plan=explain_candidate_plan(board, candidate),
             )
             for rank, candidate in enumerate(self._recommendation.candidates, start=1)
         )

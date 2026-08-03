@@ -167,6 +167,12 @@ function renderBoard() {
 
 function renderCandidateArrows(candidates, whiteOrientation) {
   candidateArrowsElement.replaceChildren();
+  const selectedCandidate = candidates.find(
+    candidate => candidate.uci === selectedCandidateUci,
+  );
+  if (selectedCandidate) {
+    renderFutureArrows(selectedCandidate, whiteOrientation);
+  }
   candidates.forEach(candidate => {
     const rankStyle = Math.min(candidate.rank, 3);
     const endpoints = arrowEndpoints(candidate.uci, whiteOrientation);
@@ -179,6 +185,46 @@ function renderCandidateArrows(candidates, whiteOrientation) {
     line.setAttribute("y2", endpoints.end.y);
     line.setAttribute("marker-end", `url(#candidate-arrowhead-${rankStyle})`);
     candidateArrowsElement.append(line);
+  });
+}
+
+function renderFutureArrows(candidate, whiteOrientation) {
+  if (!candidate.variation_uci || candidate.variation_uci[0] !== candidate.uci) return;
+  const rankStyle = Math.min(candidate.rank, 3);
+  candidate.variation_uci.slice(1, 3).forEach((move, index) => {
+    const plyNumber = index + 2;
+    const endpoints = arrowEndpoints(move, whiteOrientation);
+    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    const isOpponentReply = plyNumber % 2 === 0;
+    line.classList.add(
+      "future-arrow",
+      isOpponentReply ? "response" : "own",
+      `rank-${rankStyle}`,
+    );
+    line.setAttribute("x1", endpoints.start.x);
+    line.setAttribute("y1", endpoints.start.y);
+    line.setAttribute("x2", endpoints.end.x);
+    line.setAttribute("y2", endpoints.end.y);
+    line.setAttribute(
+      "marker-end",
+      isOpponentReply
+        ? "url(#future-arrowhead-response)"
+        : `url(#candidate-arrowhead-${rankStyle})`,
+    );
+    candidateArrowsElement.append(line);
+
+    const target = squareCenter(move.slice(2, 4), whiteOrientation);
+    const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    circle.classList.add("variation-step-circle");
+    circle.setAttribute("cx", target.x);
+    circle.setAttribute("cy", target.y);
+    circle.setAttribute("r", 18);
+    const number = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    number.classList.add("variation-step-number");
+    number.setAttribute("x", target.x);
+    number.setAttribute("y", target.y + 1);
+    number.textContent = plyNumber;
+    candidateArrowsElement.append(circle, number);
   });
 }
 
@@ -518,10 +564,13 @@ function renderRecommendations() {
     const explanation = document.createElement("p");
     explanation.className = "explanation";
     explanation.textContent = candidate.explanation;
+    const plan = document.createElement("p");
+    plan.className = "plan";
+    plan.textContent = candidate.plan;
     const variation = document.createElement("p");
     variation.className = "variation";
     variation.textContent = `Variante: ${candidate.variation.join(" ")}`;
-    card.append(topLine, explanation, variation);
+    card.append(topLine, explanation, plan, variation);
     recommendationsElement.append(card);
   });
 }
