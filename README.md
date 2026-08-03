@@ -20,7 +20,7 @@ localhost browser game → click or drag moves + two chess clocks
 
 The browser prototype is served only on `127.0.0.1`. It never plays the player's recommended move: the player clicks or drags every own move, while Stockfish controls only the local opponent. During the bot phase, one player move can be queued as a blue premove and is automatically submitted only if it remains legal after the bot response. A fixed White-perspective evaluation bar updates after every completed turn.
 
-Candidate cards include evaluations, principal variations, deterministic tactical cues, and selectable color-matched root arrows. The selected candidate additionally shows at most the expected reply and one next own move as numbered dashed arrows. A concise plan identifies development, central control, king safety, checks, captures, and the next step when these properties are visible in the short engine line. It deliberately avoids displaying a cluttered full search tree.
+Candidate cards include evaluations, principal variations, deterministic tactical cues, and selectable color-matched root arrows. The default is one green best-move recommendation. Before starting, the local UI can switch to two or three candidates; that choice is locked during the game. The selected candidate additionally shows at most the expected reply and one next own move as numbered dashed arrows. A concise plan identifies development, central control, king safety, checks, captures, and the next step when these properties are visible in the short engine line. It deliberately avoids displaying a cluttered full search tree.
 
 After each move, a second bounded evaluation—or the terminal result—estimates normalized evaluation-share loss. This produces a clearly labeled **provisional** move category and running accuracy for both colors. It is an original transparent prototype metric, not Chess.com's proprietary Accuracy. Every played move, clock value, live recommendation, provisional quality, and current result is recorded as PGN under `output/games` and can also be downloaded in the browser.
 
@@ -136,7 +136,7 @@ Example with a five-minute clock and three-second increment:
   --increment-seconds 3
 ```
 
-The application binds to `http://127.0.0.1:8765`. Use `--no-browser` to suppress automatic browser opening or `--port 9000` to select another local port. Click **Partie starten**, then click a piece and destination or drag the piece directly. The evaluation bar always treats positive values as a White advantage, independent of whose turn it is. Up to three root arrows are shown by default; selecting a recommendation card emphasizes its matching arrow and displays up to two short continuation arrows.
+The application binds to `http://127.0.0.1:8765`. Use `--no-browser` to suppress automatic browser opening or `--port 9000` to select another local port. Before clicking **Partie starten**, choose one, two, or three recommendations; one is the default. Then click a piece and destination or drag the piece directly. The evaluation bar always treats positive values as a White advantage, independent of whose turn it is. Selecting a recommendation card emphasizes its matching arrow and displays up to two short continuation arrows.
 
 After submitting a normal move, the browser receives the intermediate bot-turn position. While the bounded bot request runs, click or drag one blue premove; press `Escape` to cancel it. The move is checked against the actual resulting position and is discarded with a message if it became illegal.
 
@@ -165,7 +165,7 @@ python -m pytest tests/test_stockfish_integration.py
 
 1. **Bounded position analysis** — implemented and real-engine verified.
 2. **Synchronous interactive terminal game** — implemented with legal move input, undo, game termination, live recommendations, and selectable bot/coach Elo.
-3. **Clocked localhost browser game** — implemented with click and drag input, validated premoves, live evaluation bar, selectable MultiPV and short continuation arrows, tactical plan summaries, provisional move quality and accuracy, local opponent moves, two countdown clocks, move history, and incremental PGN recording.
+3. **Clocked localhost browser game** — implemented with click and drag input, validated premoves, a pre-game one-to-three recommendation selector with a one-candidate default, live evaluation bar, selectable MultiPV and short continuation arrows, tactical plan summaries, provisional move quality and accuracy, local opponent moves, two countdown clocks, move history, and incremental PGN recording.
 4. **Low-latency live pipeline** — move analysis into the background, cancel stale work, and publish only the newest position's result.
 5. **Deep post-game analysis** — recompute each played move with a larger Stockfish budget and identify stable inaccuracies, mistakes, blunders, and critical moments.
 6. **Richer coaching explanations** — expand the first tactical cues into concise tactical and positional learning notes.

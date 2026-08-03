@@ -51,7 +51,7 @@ Use a real local Stockfish executable selectively to verify UCI startup, one sma
 
 For the terminal, test a small number of complete CLI paths: valid FEN, invalid FEN, missing engine, and successful recommendation output. Prefer invoking the Python entry point without spawning a subprocess unless process behavior matters.
 
-For the localhost browser workflow, test clock and game coordination below HTTP first, then use Flask's test client for page, start, separate player/bot moves, errors, and PGN-download routes. Protect the server contract that premove candidates never bypass final legal-move validation. A practical real-boundary smoke check should serve the packaged page on `127.0.0.1`, use real Stockfish for one complete turn, and shut both HTTP and engine resources down explicitly. Browser layout, native drag events, local premove queuing, and SVG overlays still require a short manual check because API tests do not execute browser interaction.
+For the localhost browser workflow, test clock and game coordination below HTTP first, then use Flask's test client for page, validated pre-game settings, start, separate player/bot moves, errors, and PGN-download routes. Protect the server contract that premove candidates never bypass final legal-move validation. A practical real-boundary smoke check should serve the packaged page on `127.0.0.1`, use real Stockfish for one complete turn, and shut both HTTP and engine resources down explicitly. Browser layout, native drag events, local premove queuing, and SVG overlays still require a short manual check because API tests do not execute browser interaction.
 
 ### Level 5: External data
 
@@ -62,7 +62,7 @@ If completed-game chess.com import is added, keep live API checks separate from 
 Tests normally add value for:
 
 - FEN and move validation behavior;
-- legal-move and recommendation transformation;
+- legal-move and recommendation transformation, including the one-candidate default and pre-game one-to-three selection;
 - evaluation and mate-score presentation rules;
 - fixed White-perspective normalization and evaluation-bar mapping;
 - provisional move-quality thresholds and per-color running accuracy;
