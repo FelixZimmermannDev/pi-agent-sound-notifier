@@ -9,9 +9,12 @@
 </head>
 <body>
   <header class="topbar">
-    <div>
-      <p class="eyebrow">Lokaler Prototyp</p>
-      <h1>Chess Analysis Coach</h1>
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">♞</span>
+      <div>
+        <p class="eyebrow">Lokaler Prototyp</p>
+        <h1>Chess Analysis Coach</h1>
+      </div>
     </div>
     <span class="local-badge">Nur auf diesem Computer</span>
   </header>
@@ -19,9 +22,12 @@
   <main class="game-shell">
     <section class="board-column" aria-label="Lokales Schachspiel">
       <div class="player-strip opponent-strip">
-        <div>
-          <strong id="top-player-name">Stockfish</strong>
-          <span id="top-player-detail">Lokaler Gegner</span>
+        <div class="player-identity">
+          <div class="player-avatar bot-avatar" aria-hidden="true">♟</div>
+          <div>
+            <strong id="top-player-name">Stockfish</strong>
+            <span id="top-player-detail">Lokaler Gegner</span>
+          </div>
         </div>
         <time id="top-clock" class="clock">10:00</time>
       </div>
@@ -39,9 +45,12 @@
       </div>
 
       <div class="player-strip player-strip-self">
-        <div>
-          <strong id="bottom-player-name">Du</strong>
-          <span id="bottom-player-detail">Weiß</span>
+        <div class="player-identity">
+          <div class="player-avatar user-avatar" aria-hidden="true">FZ</div>
+          <div>
+            <strong id="bottom-player-name">Du</strong>
+            <span id="bottom-player-detail">Weiß</span>
+          </div>
         </div>
         <time id="bottom-clock" class="clock">10:00</time>
       </div>
