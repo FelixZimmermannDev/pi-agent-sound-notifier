@@ -5,7 +5,7 @@ import chess
 import chess.pgn
 import pytest
 
-from chess_analysis_coach.errors import InvalidMoveError
+from chess_analysis_coach.errors import InvalidMoveError, SessionStateError
 from chess_analysis_coach.models import CandidateMove, Evaluation
 from chess_analysis_coach.web_game import LocalWebGame, WebGameSettings
 
@@ -150,6 +150,29 @@ def test_web_game_classifies_a_non_candidate_player_move_provisionally() -> None
     assert state.latest_move_quality.loss_percentage_points > 0
     assert state.running_accuracy.white_percent is not None
     assert state.running_accuracy.white_percent < 100
+
+
+def test_web_game_applies_pre_game_recommendation_count() -> None:
+    engine = DeterministicWebEngine()
+    game = LocalWebGame(engine, board=chess.Board(), settings=settings())
+
+    state = game.start(candidate_count=1)
+
+    assert state.candidate_count == 1
+    assert len(state.recommendation) == 1
+
+
+def test_web_game_rejects_invalid_recommendation_count_without_starting() -> None:
+    game = LocalWebGame(
+        DeterministicWebEngine(),
+        board=chess.Board(),
+        settings=settings(),
+    )
+
+    with pytest.raises(SessionStateError, match="between 1 and 3"):
+        game.start(candidate_count=4)
+
+    assert not game.state().started
 
 
 def test_web_game_rejects_illegal_player_move_without_bot_reply() -> None:

@@ -18,10 +18,14 @@ const evaluationBarElement = document.querySelector("#evaluation-bar");
 const evaluationWhiteElement = document.querySelector("#evaluation-white");
 const evaluationBlackElement = document.querySelector("#evaluation-black");
 const evaluationScoreElement = document.querySelector("#evaluation-score");
+const candidateCountButtons = Array.from(
+  document.querySelectorAll("[data-candidate-count]"),
+);
 
 let gameState = null;
 let selectedSquare = null;
 let selectedCandidateUci = null;
+let selectedRecommendationCount = 1;
 let queuedPremoveUci = null;
 let dragSourceSquare = null;
 let requestInProgress = false;
@@ -52,6 +56,7 @@ function applyState(nextState) {
   const positionChanged = gameState?.fen !== nextState.fen;
   const availableCandidates = nextState.recommendation.map(candidate => candidate.uci);
   gameState = nextState;
+  selectedRecommendationCount = nextState.candidate_count;
   stateReceivedAt = performance.now();
   if (positionChanged || !nextState.is_player_turn) {
     selectedSquare = null;
@@ -69,6 +74,7 @@ function render() {
   renderPlayers();
   renderEvaluationBar();
   renderStatus();
+  renderRecommendationSettings();
   renderMoveQuality();
   renderRecommendations();
   renderMoves();
@@ -451,6 +457,16 @@ function renderEvaluationBar() {
   evaluationBarElement.setAttribute("aria-label", description);
 }
 
+function renderRecommendationSettings() {
+  candidateCountButtons.forEach(button => {
+    const count = Number(button.dataset.candidateCount);
+    const isSelected = count === selectedRecommendationCount;
+    button.classList.toggle("selected", isSelected);
+    button.setAttribute("aria-pressed", isSelected ? "true" : "false");
+    button.disabled = gameState.started || requestInProgress;
+  });
+}
+
 function renderMoveQuality() {
   const running = gameState.running_accuracy;
   document.querySelector("#white-accuracy").textContent = formatAccuracy(
@@ -672,12 +688,23 @@ function hideError() {
   errorMessage.textContent = "";
 }
 
+candidateCountButtons.forEach(button => {
+  button.addEventListener("click", () => {
+    if (gameState?.started || requestInProgress) return;
+    selectedRecommendationCount = Number(button.dataset.candidateCount);
+    renderRecommendationSettings();
+  });
+});
+
 startButton.addEventListener("click", async () => {
   requestInProgress = true;
   startButton.disabled = true;
   let requestOpeningBotMove = false;
   try {
-    const state = await requestJson("/api/game/start", { method: "POST", body: "{}" });
+    const state = await requestJson("/api/game/start", {
+      method: "POST",
+      body: JSON.stringify({ candidate_count: selectedRecommendationCount }),
+    });
     applyState(state);
     requestOpeningBotMove = state.started && !state.game_over && !state.is_player_turn;
   } catch (error) {
@@ -685,6 +712,7 @@ startButton.addEventListener("click", async () => {
   } finally {
     requestInProgress = false;
     renderStatus();
+    renderRecommendationSettings();
   }
   if (requestOpeningBotMove) requestBotMove();
 });
@@ -703,6 +731,7 @@ resetButton.addEventListener("click", async () => {
   } finally {
     requestInProgress = false;
     renderStatus();
+    renderRecommendationSettings();
   }
 });
 

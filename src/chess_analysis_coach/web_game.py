@@ -1,6 +1,6 @@
 """Application state for one local browser game."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Protocol
 
@@ -51,8 +51,8 @@ class WebGameSettings:
     def __post_init__(self) -> None:
         if self.coach_time_seconds <= 0 or self.bot_time_seconds <= 0:
             raise ValueError("Engine time limits must be greater than zero.")
-        if self.candidate_count <= 0:
-            raise ValueError("Candidate count must be greater than zero.")
+        if not 1 <= self.candidate_count <= 3:
+            raise ValueError("Candidate count must be between 1 and 3.")
         if self.initial_seconds <= 0:
             raise ValueError("Initial clock time must be greater than zero.")
         if self.increment_seconds < 0:
@@ -111,6 +111,7 @@ class ClockView:
 class WebGameView:
     fen: str
     player_color: str
+    candidate_count: int
     turn: str
     started: bool
     game_over: bool
@@ -167,9 +168,18 @@ class LocalWebGame:
             else None
         )
 
-    def start(self) -> WebGameView:
+    def start(self, *, candidate_count: int | None = None) -> WebGameView:
         if self._started:
             raise SessionStateError("The local game has already started.")
+        if candidate_count is not None:
+            if not 1 <= candidate_count <= 3:
+                raise SessionStateError(
+                    "Recommendation count must be between 1 and 3."
+                )
+            self._settings = replace(
+                self._settings,
+                candidate_count=candidate_count,
+            )
 
         self._started = True
         if self._session.is_game_over:
@@ -288,6 +298,7 @@ class LocalWebGame:
         return WebGameView(
             fen=board.fen(),
             player_color=_color_name(self._settings.player_color),
+            candidate_count=self._settings.candidate_count,
             turn=_color_name(board.turn),
             started=self._started,
             game_over=game_over,

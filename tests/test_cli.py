@@ -80,6 +80,7 @@ def test_cli_accepts_local_web_game_settings() -> None:
     assert options.player_color == "black"
     assert options.minutes == 5
     assert options.increment_seconds == 3
+    assert options.candidates == 1
     assert options.port == 9000
     assert options.no_browser
 

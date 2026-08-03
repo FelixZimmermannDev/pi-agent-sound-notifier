@@ -552,6 +552,66 @@ h2 {
   background: #b8e45f;
 }
 
+.recommendation-setting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 15px 0 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgb(255 255 255 / 2%);
+  padding: 10px;
+}
+
+.recommendation-setting legend {
+  padding: 0 4px;
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.recommendation-setting p {
+  flex: 1;
+  margin: 0;
+  color: #898d83;
+  font-size: 0.68rem;
+  line-height: 1.35;
+}
+
+.recommendation-count-buttons {
+  display: flex;
+  flex: 0 0 auto;
+  overflow: hidden;
+  border: 1px solid #525049;
+  border-radius: 6px;
+}
+
+.recommendation-count-buttons button {
+  width: 34px;
+  min-height: 32px;
+  border: 0;
+  border-right: 1px solid #525049;
+  background: #292a25;
+  color: var(--muted);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.recommendation-count-buttons button:last-child {
+  border-right: 0;
+}
+
+.recommendation-count-buttons button.selected {
+  background: var(--accent);
+  color: #17200f;
+}
+
+.recommendation-count-buttons button:disabled {
+  cursor: not-allowed;
+  opacity: 0.46;
+}
+
 .button-row {
   display: flex;
   flex-wrap: wrap;

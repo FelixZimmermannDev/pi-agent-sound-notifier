@@ -38,7 +38,15 @@ def create_app(game: LocalWebGame) -> Flask:
 
     @app.post("/api/game/start")
     def start_game() -> Response:
-        return jsonify(asdict(game.start()))
+        payload = request.get_json(silent=True)
+        candidate_count = (
+            payload.get("candidate_count") if isinstance(payload, dict) else None
+        )
+        if candidate_count is not None and (
+            isinstance(candidate_count, bool) or not isinstance(candidate_count, int)
+        ):
+            return jsonify(error="Recommendation count must be a whole number."), 400
+        return jsonify(asdict(game.start(candidate_count=candidate_count)))
 
     @app.post("/api/game/move")
     def play_move() -> Response:

@@ -82,6 +82,15 @@
           <p id="status-detail">Starte die Uhr, wenn du bereit bist.</p>
           <p class="coach-legend"><span></span> Die farbigen Pfeile zeigen Live-Kandidaten. Wähle rechts einen Zug aus – ziehen musst du selbst.</p>
         </div>
+        <fieldset id="recommendation-setting" class="recommendation-setting">
+          <legend>Empfehlungen pro Stellung</legend>
+          <div class="recommendation-count-buttons" role="group" aria-label="Anzahl der Empfehlungen">
+            <button type="button" data-candidate-count="1" aria-pressed="true">1</button>
+            <button type="button" data-candidate-count="2" aria-pressed="false">2</button>
+            <button type="button" data-candidate-count="3" aria-pressed="false">3</button>
+          </div>
+          <p>Standardmäßig bleibt nur der beste grüne Stockfish-Kandidat sichtbar.</p>
+        </fieldset>
         <div class="button-row">
           <button id="start-button" class="primary-button" type="button">Partie starten</button>
           <button id="reset-button" class="secondary-button" type="button">Neue Partie</button>

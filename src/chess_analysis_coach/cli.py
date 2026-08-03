@@ -24,7 +24,7 @@ from chess_analysis_coach.stockfish import (
 from chess_analysis_coach.web_game import WebGameSettings
 
 _DEFAULT_TIME_MS = 250
-_DEFAULT_CANDIDATES = 3
+_DEFAULT_CANDIDATES = 1
 _DEFAULT_BOT_ELO = 1500
 _DEFAULT_CLOCK_MINUTES = 10
 _DEFAULT_WEB_PORT = 8765
@@ -58,6 +58,13 @@ def _port_number(value: str) -> int:
     return parsed_value
 
 
+def _browser_candidate_count(value: str) -> int:
+    parsed_value = _positive_integer(value)
+    if parsed_value > 3:
+        raise argparse.ArgumentTypeError("must be between 1 and 3")
+    return parsed_value
+
+
 def _stockfish_elo(value: str) -> int:
     parsed_value = _positive_integer(value)
     if not MIN_STOCKFISH_ELO <= parsed_value <= MAX_STOCKFISH_ELO:
@@ -78,7 +85,11 @@ def _add_engine_argument(parser: argparse.ArgumentParser) -> None:
     )
 
 
-def _add_coach_arguments(parser: argparse.ArgumentParser) -> None:
+def _add_coach_arguments(
+    parser: argparse.ArgumentParser,
+    *,
+    candidate_type: Callable[[str], int] = _positive_integer,
+) -> None:
     parser.add_argument(
         "--time-ms",
         type=_positive_integer,
@@ -87,7 +98,7 @@ def _add_coach_arguments(parser: argparse.ArgumentParser) -> None:
     )
     parser.add_argument(
         "--candidates",
-        type=_positive_integer,
+        type=candidate_type,
         default=_DEFAULT_CANDIDATES,
         help=f"maximum candidate moves to show (default: {_DEFAULT_CANDIDATES})",
     )
@@ -208,7 +219,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="optional starting FEN; default is the standard starting position",
     )
     _add_engine_argument(web_parser)
-    _add_coach_arguments(web_parser)
+    _add_coach_arguments(web_parser, candidate_type=_browser_candidate_count)
     return parser
 
 

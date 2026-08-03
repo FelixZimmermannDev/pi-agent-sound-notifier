@@ -66,6 +66,7 @@ def test_local_web_api_serves_page_and_one_complete_turn() -> None:
     assert 'id="candidate-arrows"' in page.get_data(as_text=True)
     assert 'id="future-arrowhead-response"' in page.get_data(as_text=True)
     assert 'id="evaluation-bar"' in page.get_data(as_text=True)
+    assert 'data-candidate-count="1"' in page.get_data(as_text=True)
 
     stylesheet = client.get("/static/app.css")
     assert stylesheet.status_code == 200
@@ -104,6 +105,30 @@ def test_local_web_api_serves_page_and_one_complete_turn() -> None:
     assert pgn.status_code == 200
     assert pgn.mimetype == "application/x-chess-pgn"
     assert "e4" in pgn.get_data(as_text=True)
+
+
+def test_local_web_api_accepts_pre_game_recommendation_count() -> None:
+    app = create_app(create_test_game())
+    app.testing = True
+    response = app.test_client().post(
+        "/api/game/start",
+        json={"candidate_count": 3},
+    )
+
+    assert response.status_code == 200
+    assert response.get_json()["candidate_count"] == 3
+
+
+def test_local_web_api_rejects_invalid_recommendation_count_without_starting() -> None:
+    app = create_app(create_test_game())
+    app.testing = True
+    client = app.test_client()
+
+    response = client.post("/api/game/start", json={"candidate_count": 4})
+
+    assert response.status_code == 400
+    assert "between 1 and 3" in response.get_json()["error"]
+    assert not client.get("/api/game").get_json()["started"]
 
 
 def test_local_web_api_rejects_bot_move_during_player_turn() -> None:
