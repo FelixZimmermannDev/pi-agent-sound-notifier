@@ -491,6 +491,7 @@ export default function projectHarnessFeedbackLoop(pi: ExtensionAPI) {
         setContractToolActive(pi, true);
         ctx.ui.notify(`Started guarded task ${id}.`, "info");
         pi.sendUserMessage(userPrompt);
+        await ctx.waitForIdle();
       } catch (error) {
         activeTask = undefined;
         setContractToolActive(pi, false);
