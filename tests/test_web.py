@@ -39,14 +39,14 @@ class WebTestEngine:
         return move if move in board.legal_moves else next(iter(board.legal_moves))
 
 
-def create_test_game() -> LocalWebGame:
+def create_test_game(*, coach_elo: int | None = None) -> LocalWebGame:
     return LocalWebGame(
         WebTestEngine(),
         board=chess.Board(),
         settings=WebGameSettings(
             player_color=chess.WHITE,
             bot_elo=1500,
-            coach_elo=None,
+            coach_elo=coach_elo,
             coach_time_seconds=0.05,
             bot_time_seconds=0.05,
             candidate_count=1,
@@ -70,6 +70,8 @@ def test_local_web_api_serves_page_and_one_complete_turn() -> None:
     assert 'data-forecast-side="opponent"' in page.get_data(as_text=True)
     assert 'data-forecast-mode="relevant"' in page.get_data(as_text=True)
     assert 'id="bot-elo-slider"' in page.get_data(as_text=True)
+    assert 'id="coach-max-strength"' in page.get_data(as_text=True)
+    assert 'id="coach-elo-slider"' in page.get_data(as_text=True)
 
     stylesheet = client.get("/static/app.css")
     assert stylesheet.status_code == 200
@@ -115,12 +117,13 @@ def test_local_web_api_accepts_pre_game_recommendation_count() -> None:
     app.testing = True
     response = app.test_client().post(
         "/api/game/start",
-        json={"candidate_count": 3, "bot_elo": 1800},
+        json={"candidate_count": 3, "bot_elo": 1800, "coach_elo": 1900},
     )
 
     assert response.status_code == 200
     assert response.get_json()["candidate_count"] == 3
     assert response.get_json()["bot_elo"] == 1800
+    assert response.get_json()["coach_elo"] == 1900
 
 
 def test_local_web_api_rejects_invalid_recommendation_count_without_starting() -> None:
@@ -135,6 +138,19 @@ def test_local_web_api_rejects_invalid_recommendation_count_without_starting() -
     assert not client.get("/api/game").get_json()["started"]
 
 
+def test_local_web_api_accepts_explicit_full_strength_coach() -> None:
+    app = create_app(create_test_game(coach_elo=1800))
+    app.testing = True
+
+    response = app.test_client().post(
+        "/api/game/start",
+        json={"coach_elo": None},
+    )
+
+    assert response.status_code == 200
+    assert response.get_json()["coach_elo"] is None
+
+
 def test_local_web_api_rejects_invalid_bot_elo_without_starting() -> None:
     app = create_app(create_test_game())
     app.testing = True
@@ -144,6 +160,18 @@ def test_local_web_api_rejects_invalid_bot_elo_without_starting() -> None:
 
     assert response.status_code == 400
     assert "Bot Elo must be between" in response.get_json()["error"]
+    assert not client.get("/api/game").get_json()["started"]
+
+
+def test_local_web_api_rejects_invalid_coach_elo_without_starting() -> None:
+    app = create_app(create_test_game())
+    app.testing = True
+    client = app.test_client()
+
+    response = client.post("/api/game/start", json={"coach_elo": 1000})
+
+    assert response.status_code == 400
+    assert "Coach Elo must be between" in response.get_json()["error"]
     assert not client.get("/api/game").get_json()["started"]
 
 

@@ -62,6 +62,13 @@ class WebGameSettings:
                 f"Bot Elo must be between {MIN_STOCKFISH_ELO} and "
                 f"{MAX_STOCKFISH_ELO}."
             )
+        if self.coach_elo is not None and not (
+            MIN_STOCKFISH_ELO <= self.coach_elo <= MAX_STOCKFISH_ELO
+        ):
+            raise ValueError(
+                f"Coach Elo must be between {MIN_STOCKFISH_ELO} and "
+                f"{MAX_STOCKFISH_ELO}."
+            )
         if not 1 <= self.candidate_count <= 3:
             raise ValueError("Candidate count must be between 1 and 3.")
         if self.initial_seconds <= 0:
@@ -125,6 +132,7 @@ class WebGameView:
     player_color: str
     candidate_count: int
     bot_elo: int
+    coach_elo: int | None
     turn: str
     started: bool
     game_over: bool
@@ -186,6 +194,8 @@ class LocalWebGame:
         *,
         candidate_count: int | None = None,
         bot_elo: int | None = None,
+        coach_elo: int | None = None,
+        use_full_strength_coach: bool = False,
     ) -> WebGameView:
         if self._started:
             raise SessionStateError("The local game has already started.")
@@ -196,6 +206,11 @@ class LocalWebGame:
             else candidate_count
         )
         selected_bot_elo = self._settings.bot_elo if bot_elo is None else bot_elo
+        selected_coach_elo = (
+            None
+            if use_full_strength_coach
+            else self._settings.coach_elo if coach_elo is None else coach_elo
+        )
         if not 1 <= selected_candidate_count <= 3:
             raise SessionStateError("Recommendation count must be between 1 and 3.")
         if not MIN_STOCKFISH_ELO <= selected_bot_elo <= MAX_STOCKFISH_ELO:
@@ -203,10 +218,18 @@ class LocalWebGame:
                 f"Bot Elo must be between {MIN_STOCKFISH_ELO} and "
                 f"{MAX_STOCKFISH_ELO}."
             )
+        if selected_coach_elo is not None and not (
+            MIN_STOCKFISH_ELO <= selected_coach_elo <= MAX_STOCKFISH_ELO
+        ):
+            raise SessionStateError(
+                f"Coach Elo must be between {MIN_STOCKFISH_ELO} and "
+                f"{MAX_STOCKFISH_ELO}."
+            )
         self._settings = replace(
             self._settings,
             candidate_count=selected_candidate_count,
             bot_elo=selected_bot_elo,
+            coach_elo=selected_coach_elo,
         )
 
         self._started = True
@@ -328,6 +351,7 @@ class LocalWebGame:
             player_color=_color_name(self._settings.player_color),
             candidate_count=self._settings.candidate_count,
             bot_elo=self._settings.bot_elo,
+            coach_elo=self._settings.coach_elo,
             turn=_color_name(board.turn),
             started=self._started,
             game_over=game_over,

@@ -13,6 +13,7 @@ from chess_analysis_coach.web_game import LocalWebGame, WebGameSettings
 class DeterministicWebEngine:
     def __init__(self) -> None:
         self.analysis_calls: list[str] = []
+        self.analysis_strengths: list[int | None] = []
         self.bot_calls: list[str] = []
         self.bot_elos: list[int] = []
 
@@ -25,6 +26,7 @@ class DeterministicWebEngine:
         strength_elo: int | None = None,
     ) -> tuple[CandidateMove, ...]:
         self.analysis_calls.append(board.fen())
+        self.analysis_strengths.append(strength_elo)
         preferred_moves = ("e2e4", "g1f3", "e7e5", "g8f6")
         moves: list[chess.Move] = []
         for uci in preferred_moves:
@@ -67,11 +69,15 @@ class DeterministicWebEngine:
         return next(iter(board.legal_moves))
 
 
-def settings(*, player_color: chess.Color = chess.WHITE) -> WebGameSettings:
+def settings(
+    *,
+    player_color: chess.Color = chess.WHITE,
+    coach_elo: int | None = None,
+) -> WebGameSettings:
     return WebGameSettings(
         player_color=player_color,
         bot_elo=1500,
-        coach_elo=None,
+        coach_elo=coach_elo,
         coach_time_seconds=0.05,
         bot_time_seconds=0.05,
         candidate_count=2,
@@ -160,15 +166,31 @@ def test_web_game_applies_pre_game_recommendation_count() -> None:
     engine = DeterministicWebEngine()
     game = LocalWebGame(engine, board=chess.Board(), settings=settings())
 
-    state = game.start(candidate_count=1, bot_elo=1800)
+    state = game.start(candidate_count=1, bot_elo=1800, coach_elo=1900)
 
     assert state.candidate_count == 1
     assert state.bot_elo == 1800
+    assert state.coach_elo == 1900
     assert len(state.recommendation) == 1
 
     game.play_player_move("e4")
     game.play_bot_turn()
     assert engine.bot_elos == [1800]
+    assert engine.analysis_strengths == [1900, 1900, 1900]
+
+
+def test_web_game_can_restore_full_strength_coach_before_start() -> None:
+    engine = DeterministicWebEngine()
+    game = LocalWebGame(
+        engine,
+        board=chess.Board(),
+        settings=settings(coach_elo=1800),
+    )
+
+    state = game.start(use_full_strength_coach=True)
+
+    assert state.coach_elo is None
+    assert engine.analysis_strengths == [None]
 
 
 def test_web_game_rejects_invalid_recommendation_count_without_starting() -> None:
@@ -193,6 +215,19 @@ def test_web_game_rejects_invalid_bot_elo_without_starting() -> None:
 
     with pytest.raises(SessionStateError, match="Bot Elo must be between"):
         game.start(bot_elo=1000)
+
+    assert not game.state().started
+
+
+def test_web_game_rejects_invalid_coach_elo_without_starting() -> None:
+    game = LocalWebGame(
+        DeterministicWebEngine(),
+        board=chess.Board(),
+        settings=settings(),
+    )
+
+    with pytest.raises(SessionStateError, match="Coach Elo must be between"):
+        game.start(coach_elo=1000)
 
     assert not game.state().started
 

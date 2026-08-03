@@ -97,6 +97,16 @@
           <input id="bot-elo-slider" type="range" min="1320" max="3190" step="10" value="1500">
           <p>Dieser Wert steuert nur den Gegner in der lokalen Partie, nicht die Coach-Stärke.</p>
         </fieldset>
+        <fieldset id="coach-strength-setting" class="opponent-setting coach-strength-setting">
+          <legend>Stockfish-Coach</legend>
+          <label class="maximum-strength-toggle" for="coach-max-strength">
+            <span>Maximale Stärke</span>
+            <input id="coach-max-strength" type="checkbox" checked>
+          </label>
+          <label for="coach-elo-slider">Begrenzte Stärke <output id="coach-elo-value" for="coach-elo-slider">Maximal</output></label>
+          <input id="coach-elo-slider" type="range" min="1320" max="3190" step="10" value="1800" disabled>
+          <p>Der Coach berechnet Empfehlungen und Zugqualität unabhängig von der lokalen Gegnerstärke.</p>
+        </fieldset>
         <div class="button-row">
           <button id="start-button" class="primary-button" type="button">Partie starten</button>
           <button id="reset-button" class="secondary-button" type="button">Neue Partie</button>

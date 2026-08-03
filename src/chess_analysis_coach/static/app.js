@@ -26,12 +26,17 @@ const forecastModeButtons = Array.from(
 );
 const botEloSlider = document.querySelector("#bot-elo-slider");
 const botEloValue = document.querySelector("#bot-elo-value");
+const coachMaxStrength = document.querySelector("#coach-max-strength");
+const coachEloSlider = document.querySelector("#coach-elo-slider");
+const coachEloValue = document.querySelector("#coach-elo-value");
 
 let gameState = null;
 let selectedSquare = null;
 let selectedCandidateUci = null;
 let selectedRecommendationCount = 1;
 let selectedBotElo = 1500;
+let selectedCoachElo = null;
+let limitedCoachElo = 1800;
 let opponentForecastMode = "relevant";
 let ownForecastMode = "relevant";
 let queuedPremoveUci = null;
@@ -66,6 +71,8 @@ function applyState(nextState) {
   gameState = nextState;
   selectedRecommendationCount = nextState.candidate_count;
   selectedBotElo = nextState.bot_elo;
+  selectedCoachElo = nextState.coach_elo;
+  if (nextState.coach_elo != null) limitedCoachElo = nextState.coach_elo;
   stateReceivedAt = performance.now();
   if (positionChanged || !nextState.is_player_turn) {
     selectedSquare = null;
@@ -488,6 +495,17 @@ function renderRecommendationSettings() {
   botEloSlider.value = selectedBotElo;
   botEloValue.textContent = `${selectedBotElo} Elo`;
   botEloSlider.disabled = gameState.started || requestInProgress;
+
+  const coachUsesMaximum = selectedCoachElo == null;
+  coachMaxStrength.checked = coachUsesMaximum;
+  coachMaxStrength.disabled = gameState.started || requestInProgress;
+  coachEloSlider.value = limitedCoachElo;
+  coachEloSlider.disabled = (
+    gameState.started || requestInProgress || coachUsesMaximum
+  );
+  coachEloValue.textContent = coachUsesMaximum
+    ? "Maximal"
+    : `${selectedCoachElo} Elo`;
 }
 
 function renderForecastControls() {
@@ -762,6 +780,19 @@ botEloSlider.addEventListener("input", () => {
   botEloValue.textContent = `${selectedBotElo} Elo`;
 });
 
+coachMaxStrength.addEventListener("change", () => {
+  if (gameState?.started || requestInProgress) return;
+  selectedCoachElo = coachMaxStrength.checked ? null : limitedCoachElo;
+  renderRecommendationSettings();
+});
+
+coachEloSlider.addEventListener("input", () => {
+  if (gameState?.started || requestInProgress || coachMaxStrength.checked) return;
+  limitedCoachElo = Number(coachEloSlider.value);
+  selectedCoachElo = limitedCoachElo;
+  coachEloValue.textContent = `${selectedCoachElo} Elo`;
+});
+
 forecastModeButtons.forEach(button => {
   button.addEventListener("click", () => {
     if (button.dataset.forecastSide === "opponent") {
@@ -793,6 +824,7 @@ startButton.addEventListener("click", async () => {
       body: JSON.stringify({
         candidate_count: selectedRecommendationCount,
         bot_elo: selectedBotElo,
+        coach_elo: selectedCoachElo,
       }),
     });
     applyState(state);
