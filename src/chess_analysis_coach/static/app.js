@@ -24,11 +24,14 @@ const candidateCountButtons = Array.from(
 const forecastModeButtons = Array.from(
   document.querySelectorAll("[data-forecast-mode]"),
 );
+const botEloSlider = document.querySelector("#bot-elo-slider");
+const botEloValue = document.querySelector("#bot-elo-value");
 
 let gameState = null;
 let selectedSquare = null;
 let selectedCandidateUci = null;
 let selectedRecommendationCount = 1;
+let selectedBotElo = 1500;
 let opponentForecastMode = "relevant";
 let ownForecastMode = "relevant";
 let queuedPremoveUci = null;
@@ -62,6 +65,7 @@ function applyState(nextState) {
   const availableCandidates = nextState.recommendation.map(candidate => candidate.uci);
   gameState = nextState;
   selectedRecommendationCount = nextState.candidate_count;
+  selectedBotElo = nextState.bot_elo;
   stateReceivedAt = performance.now();
   if (positionChanged || !nextState.is_player_turn) {
     selectedSquare = null;
@@ -444,7 +448,8 @@ function renderPlayers() {
   document.querySelector("#bottom-player-name").textContent = "Du";
   document.querySelector("#bottom-player-detail").textContent = playerIsWhite ? "Weiß" : "Schwarz";
   document.querySelector("#top-player-name").textContent = "Stockfish";
-  document.querySelector("#top-player-detail").textContent = playerIsWhite ? "Schwarz · lokaler Gegner" : "Weiß · lokaler Gegner";
+  const opponentColor = playerIsWhite ? "Schwarz" : "Weiß";
+  document.querySelector("#top-player-detail").textContent = `${opponentColor} · Stockfish Elo ${gameState.bot_elo}`;
 }
 
 function renderEvaluationBar() {
@@ -480,6 +485,9 @@ function renderRecommendationSettings() {
     button.setAttribute("aria-pressed", isSelected ? "true" : "false");
     button.disabled = gameState.started || requestInProgress;
   });
+  botEloSlider.value = selectedBotElo;
+  botEloValue.textContent = `${selectedBotElo} Elo`;
+  botEloSlider.disabled = gameState.started || requestInProgress;
 }
 
 function renderForecastControls() {
@@ -748,6 +756,12 @@ function hideError() {
   errorMessage.textContent = "";
 }
 
+botEloSlider.addEventListener("input", () => {
+  if (gameState?.started || requestInProgress) return;
+  selectedBotElo = Number(botEloSlider.value);
+  botEloValue.textContent = `${selectedBotElo} Elo`;
+});
+
 forecastModeButtons.forEach(button => {
   button.addEventListener("click", () => {
     if (button.dataset.forecastSide === "opponent") {
@@ -776,7 +790,10 @@ startButton.addEventListener("click", async () => {
   try {
     const state = await requestJson("/api/game/start", {
       method: "POST",
-      body: JSON.stringify({ candidate_count: selectedRecommendationCount }),
+      body: JSON.stringify({
+        candidate_count: selectedRecommendationCount,
+        bot_elo: selectedBotElo,
+      }),
     });
     applyState(state);
     requestOpeningBotMove = state.started && !state.game_over && !state.is_player_turn;

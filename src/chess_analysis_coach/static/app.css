@@ -612,6 +612,57 @@ h2 {
   opacity: 0.46;
 }
 
+.opponent-setting {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 7px;
+  margin: 10px 0 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgb(255 255 255 / 2%);
+  padding: 10px;
+}
+
+.opponent-setting legend {
+  padding: 0 4px;
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.opponent-setting label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.opponent-setting output {
+  color: var(--text);
+  font-family: "Cascadia Mono", Consolas, monospace;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.opponent-setting input[type="range"] {
+  width: 100%;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.opponent-setting input[type="range"]:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.opponent-setting p {
+  margin: 0;
+  color: #898d83;
+  font-size: 0.66rem;
+  line-height: 1.35;
+}
+
 .button-row {
   display: flex;
   flex-wrap: wrap;

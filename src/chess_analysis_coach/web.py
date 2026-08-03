@@ -42,11 +42,23 @@ def create_app(game: LocalWebGame) -> Flask:
         candidate_count = (
             payload.get("candidate_count") if isinstance(payload, dict) else None
         )
+        bot_elo = payload.get("bot_elo") if isinstance(payload, dict) else None
         if candidate_count is not None and (
             isinstance(candidate_count, bool) or not isinstance(candidate_count, int)
         ):
             return jsonify(error="Recommendation count must be a whole number."), 400
-        return jsonify(asdict(game.start(candidate_count=candidate_count)))
+        if bot_elo is not None and (
+            isinstance(bot_elo, bool) or not isinstance(bot_elo, int)
+        ):
+            return jsonify(error="Bot Elo must be a whole number."), 400
+        return jsonify(
+            asdict(
+                game.start(
+                    candidate_count=candidate_count,
+                    bot_elo=bot_elo,
+                )
+            )
+        )
 
     @app.post("/api/game/move")
     def play_move() -> Response:

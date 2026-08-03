@@ -30,6 +30,7 @@ from chess_analysis_coach.recording import (
     save_pgn,
 )
 from chess_analysis_coach.session import LocalGameSession
+from chess_analysis_coach.stockfish import MAX_STOCKFISH_ELO, MIN_STOCKFISH_ELO
 
 
 class WebGameEngine(PositionAnalyzer, Protocol):
@@ -56,6 +57,11 @@ class WebGameSettings:
     def __post_init__(self) -> None:
         if self.coach_time_seconds <= 0 or self.bot_time_seconds <= 0:
             raise ValueError("Engine time limits must be greater than zero.")
+        if not MIN_STOCKFISH_ELO <= self.bot_elo <= MAX_STOCKFISH_ELO:
+            raise ValueError(
+                f"Bot Elo must be between {MIN_STOCKFISH_ELO} and "
+                f"{MAX_STOCKFISH_ELO}."
+            )
         if not 1 <= self.candidate_count <= 3:
             raise ValueError("Candidate count must be between 1 and 3.")
         if self.initial_seconds <= 0:
@@ -118,6 +124,7 @@ class WebGameView:
     fen: str
     player_color: str
     candidate_count: int
+    bot_elo: int
     turn: str
     started: bool
     game_over: bool
@@ -174,18 +181,33 @@ class LocalWebGame:
             else None
         )
 
-    def start(self, *, candidate_count: int | None = None) -> WebGameView:
+    def start(
+        self,
+        *,
+        candidate_count: int | None = None,
+        bot_elo: int | None = None,
+    ) -> WebGameView:
         if self._started:
             raise SessionStateError("The local game has already started.")
-        if candidate_count is not None:
-            if not 1 <= candidate_count <= 3:
-                raise SessionStateError(
-                    "Recommendation count must be between 1 and 3."
-                )
-            self._settings = replace(
-                self._settings,
-                candidate_count=candidate_count,
+
+        selected_candidate_count = (
+            self._settings.candidate_count
+            if candidate_count is None
+            else candidate_count
+        )
+        selected_bot_elo = self._settings.bot_elo if bot_elo is None else bot_elo
+        if not 1 <= selected_candidate_count <= 3:
+            raise SessionStateError("Recommendation count must be between 1 and 3.")
+        if not MIN_STOCKFISH_ELO <= selected_bot_elo <= MAX_STOCKFISH_ELO:
+            raise SessionStateError(
+                f"Bot Elo must be between {MIN_STOCKFISH_ELO} and "
+                f"{MAX_STOCKFISH_ELO}."
             )
+        self._settings = replace(
+            self._settings,
+            candidate_count=selected_candidate_count,
+            bot_elo=selected_bot_elo,
+        )
 
         self._started = True
         if self._session.is_game_over:
@@ -305,6 +327,7 @@ class LocalWebGame:
             fen=board.fen(),
             player_color=_color_name(self._settings.player_color),
             candidate_count=self._settings.candidate_count,
+            bot_elo=self._settings.bot_elo,
             turn=_color_name(board.turn),
             started=self._started,
             game_over=game_over,

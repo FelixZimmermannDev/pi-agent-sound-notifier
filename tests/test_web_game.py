@@ -14,6 +14,7 @@ class DeterministicWebEngine:
     def __init__(self) -> None:
         self.analysis_calls: list[str] = []
         self.bot_calls: list[str] = []
+        self.bot_elos: list[int] = []
 
     def analyze(
         self,
@@ -58,6 +59,7 @@ class DeterministicWebEngine:
         strength_elo: int,
     ) -> chess.Move:
         self.bot_calls.append(board.fen())
+        self.bot_elos.append(strength_elo)
         for uci in ("e7e5", "e2e4"):
             move = chess.Move.from_uci(uci)
             if move in board.legal_moves:
@@ -158,10 +160,15 @@ def test_web_game_applies_pre_game_recommendation_count() -> None:
     engine = DeterministicWebEngine()
     game = LocalWebGame(engine, board=chess.Board(), settings=settings())
 
-    state = game.start(candidate_count=1)
+    state = game.start(candidate_count=1, bot_elo=1800)
 
     assert state.candidate_count == 1
+    assert state.bot_elo == 1800
     assert len(state.recommendation) == 1
+
+    game.play_player_move("e4")
+    game.play_bot_turn()
+    assert engine.bot_elos == [1800]
 
 
 def test_web_game_rejects_invalid_recommendation_count_without_starting() -> None:
@@ -173,6 +180,19 @@ def test_web_game_rejects_invalid_recommendation_count_without_starting() -> Non
 
     with pytest.raises(SessionStateError, match="between 1 and 3"):
         game.start(candidate_count=4)
+
+    assert not game.state().started
+
+
+def test_web_game_rejects_invalid_bot_elo_without_starting() -> None:
+    game = LocalWebGame(
+        DeterministicWebEngine(),
+        board=chess.Board(),
+        settings=settings(),
+    )
+
+    with pytest.raises(SessionStateError, match="Bot Elo must be between"):
+        game.start(bot_elo=1000)
 
     assert not game.state().started
 

@@ -91,6 +91,12 @@
           </div>
           <p>Standardmäßig bleibt nur der beste grüne Stockfish-Kandidat sichtbar.</p>
         </fieldset>
+        <fieldset id="opponent-setting" class="opponent-setting">
+          <legend>Lokaler Stockfish-Gegner</legend>
+          <label for="bot-elo-slider">Spielstärke <output id="bot-elo-value" for="bot-elo-slider">1500 Elo</output></label>
+          <input id="bot-elo-slider" type="range" min="1320" max="3190" step="10" value="1500">
+          <p>Dieser Wert steuert nur den Gegner in der lokalen Partie, nicht die Coach-Stärke.</p>
+        </fieldset>
         <div class="button-row">
           <button id="start-button" class="primary-button" type="button">Partie starten</button>
           <button id="reset-button" class="secondary-button" type="button">Neue Partie</button>
