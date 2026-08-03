@@ -63,6 +63,7 @@ def test_local_web_api_serves_page_and_one_complete_turn() -> None:
     assert page.status_code == 200
     assert "Chess Analysis Coach" in page.get_data(as_text=True)
     assert 'id="coach-arrow"' in page.get_data(as_text=True)
+    assert 'id="evaluation-bar"' in page.get_data(as_text=True)
 
     stylesheet = client.get("/static/app.css")
     assert stylesheet.status_code == 200
@@ -78,6 +79,7 @@ def test_local_web_api_serves_page_and_one_complete_turn() -> None:
     started = client.post("/api/game/start", json={})
     assert started.status_code == 200
     assert started.get_json()["recommendation"][0]["uci"] == "e2e4"
+    assert started.get_json()["evaluation_bar"]["white_percent"] > 50
 
     moved = client.post("/api/game/move", json={"move": "e2e4"})
     payload = moved.get_json()

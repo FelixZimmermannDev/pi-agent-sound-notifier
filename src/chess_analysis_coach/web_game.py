@@ -9,6 +9,11 @@ import chess
 from chess_analysis_coach.application import PositionAnalyzer, recommend_moves
 from chess_analysis_coach.coaching import explain_candidate
 from chess_analysis_coach.errors import InvalidMoveError, SessionStateError
+from chess_analysis_coach.evaluation import (
+    EvaluationSummary,
+    summarize_evaluation,
+    terminal_evaluation,
+)
 from chess_analysis_coach.game_clock import ChessClock
 from chess_analysis_coach.models import Recommendation
 from chess_analysis_coach.presentation import format_evaluation
@@ -90,6 +95,7 @@ class WebGameView:
     revision: int
     legal_moves: tuple[str, ...]
     clocks: ClockView
+    evaluation_bar: EvaluationSummary | None
     recommendation: tuple[CandidateView, ...]
     moves: tuple[MoveRow, ...]
     recording_filename: str
@@ -221,6 +227,7 @@ class LocalWebGame:
                     else None
                 ),
             ),
+            evaluation_bar=self._evaluation_summary(board),
             recommendation=recommendation,
             moves=self._move_rows(),
             recording_filename=(
@@ -283,6 +290,22 @@ class LocalWebGame:
                 strength_elo=self._settings.coach_elo,
             )
             self._sync_timeout()
+
+    def _evaluation_summary(
+        self,
+        board: chess.Board,
+    ) -> EvaluationSummary | None:
+        if self._timeout_color is not None:
+            return terminal_evaluation(not self._timeout_color)
+        outcome = board.outcome(claim_draw=True)
+        if outcome is not None:
+            return terminal_evaluation(outcome.winner)
+        if self._recommendation is None or not self._recommendation.candidates:
+            return None
+        return summarize_evaluation(
+            self._recommendation.candidates[0].evaluation,
+            side_to_move=board.turn,
+        )
 
     def _candidate_views(self, board: chess.Board) -> tuple[CandidateView, ...]:
         if self._recommendation is None:

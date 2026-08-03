@@ -32,16 +32,25 @@
         <time id="top-clock" class="clock">10:00</time>
       </div>
 
-      <div class="board-stage">
-        <div id="board" class="board" role="grid" aria-label="Schachbrett"></div>
-        <svg id="coach-overlay" class="coach-overlay" viewBox="0 0 800 800" aria-hidden="true">
-          <defs>
-            <marker id="coach-arrowhead" markerWidth="5" markerHeight="5" refX="3.4" refY="2.5" orient="auto" markerUnits="strokeWidth">
-              <path d="M 0 0 L 5 2.5 L 0 5 z"></path>
-            </marker>
-          </defs>
-          <line id="coach-arrow" marker-end="url(#coach-arrowhead)"></line>
-        </svg>
+      <div class="board-area">
+        <div id="evaluation-bar" class="evaluation-bar" role="img" aria-label="Noch keine Live-Bewertung">
+          <div id="evaluation-white" class="evaluation-segment evaluation-white"></div>
+          <div id="evaluation-black" class="evaluation-segment evaluation-black"></div>
+          <span id="evaluation-top-label" class="evaluation-side-label top">S</span>
+          <span id="evaluation-bottom-label" class="evaluation-side-label bottom">W</span>
+          <output id="evaluation-score" class="evaluation-score">–</output>
+        </div>
+        <div class="board-stage">
+          <div id="board" class="board" role="grid" aria-label="Schachbrett"></div>
+          <svg id="coach-overlay" class="coach-overlay" viewBox="0 0 800 800" aria-hidden="true">
+            <defs>
+              <marker id="coach-arrowhead" markerWidth="5" markerHeight="5" refX="3.4" refY="2.5" orient="auto" markerUnits="strokeWidth">
+                <path d="M 0 0 L 5 2.5 L 0 5 z"></path>
+              </marker>
+            </defs>
+            <line id="coach-arrow" marker-end="url(#coach-arrowhead)"></line>
+          </svg>
+        </div>
       </div>
 
       <div class="player-strip player-strip-self">

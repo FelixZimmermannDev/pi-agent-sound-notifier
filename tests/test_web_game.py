@@ -88,6 +88,8 @@ def test_web_game_tracks_manual_player_move_bot_reply_and_live_advice(
     started = game.start()
     assert started.is_player_turn
     assert started.recommendation[0].uci == "e2e4"
+    assert started.evaluation_bar is not None
+    assert started.evaluation_bar.white_percent > 50
 
     after_turn = game.play_player_move("e2e4")
 
@@ -154,6 +156,8 @@ def test_web_game_plays_the_opening_bot_move_when_player_is_black() -> None:
 
     assert state.player_color == "black"
     assert state.is_player_turn
+    assert state.evaluation_bar is not None
+    assert state.evaluation_bar.white_percent < 50
     assert state.moves[0].white == "e4"
     assert len(engine.bot_calls) == 1
     assert state.recommendation

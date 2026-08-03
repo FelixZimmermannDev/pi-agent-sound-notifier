@@ -14,6 +14,10 @@ const errorMessage = document.querySelector("#error-message");
 const recommendationsElement = document.querySelector("#recommendations");
 const moveListElement = document.querySelector("#move-list");
 const coachArrowElement = document.querySelector("#coach-arrow");
+const evaluationBarElement = document.querySelector("#evaluation-bar");
+const evaluationWhiteElement = document.querySelector("#evaluation-white");
+const evaluationBlackElement = document.querySelector("#evaluation-black");
+const evaluationScoreElement = document.querySelector("#evaluation-score");
 
 let gameState = null;
 let selectedSquare = null;
@@ -55,6 +59,7 @@ function render() {
   if (!gameState) return;
   renderBoard();
   renderPlayers();
+  renderEvaluationBar();
   renderStatus();
   renderRecommendations();
   renderMoves();
@@ -245,6 +250,31 @@ function renderPlayers() {
   document.querySelector("#bottom-player-detail").textContent = playerIsWhite ? "Weiß" : "Schwarz";
   document.querySelector("#top-player-name").textContent = "Stockfish";
   document.querySelector("#top-player-detail").textContent = playerIsWhite ? "Schwarz · lokaler Gegner" : "Weiß · lokaler Gegner";
+}
+
+function renderEvaluationBar() {
+  const summary = gameState.evaluation_bar;
+  const whiteAtTop = gameState.player_color === "black";
+  const whitePercent = summary?.white_percent ?? 50;
+  const blackPercent = summary?.black_percent ?? 50;
+  const splitFromTop = whiteAtTop ? whitePercent : blackPercent;
+  const topLabel = document.querySelector("#evaluation-top-label");
+  const bottomLabel = document.querySelector("#evaluation-bottom-label");
+
+  evaluationBarElement.classList.toggle("white-at-top", whiteAtTop);
+  evaluationWhiteElement.style.height = `${whitePercent}%`;
+  evaluationBlackElement.style.height = `${blackPercent}%`;
+  evaluationScoreElement.style.top = `${Math.min(96, Math.max(4, splitFromTop))}%`;
+  evaluationScoreElement.textContent = summary?.display ?? "–";
+  topLabel.textContent = whiteAtTop ? "W" : "S";
+  bottomLabel.textContent = whiteAtTop ? "S" : "W";
+  topLabel.style.color = whiteAtTop ? "#282923" : "#f1f1e9";
+  bottomLabel.style.color = whiteAtTop ? "#f1f1e9" : "#282923";
+
+  const description = summary
+    ? `Live-Bewertung ${summary.display}; Weiß ${whitePercent.toFixed(0)} Prozent, Schwarz ${blackPercent.toFixed(0)} Prozent.`
+    : "Noch keine Live-Bewertung";
+  evaluationBarElement.setAttribute("aria-label", description);
 }
 
 function renderStatus() {
