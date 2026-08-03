@@ -17,7 +17,7 @@ Classify the result:
 - `MIXED` — independently evidenced classes apply together;
 - `CHECKER` — this evaluator or supplied evidence cannot perform a reliable check.
 
-Passing tests are evidence, not proof. Do not propose an interface change for an ordinary code mistake when the effective prompt already carried the requirement. Do not weaken or rewrite canonical requirements.
+Passing tests are evidence, not proof. The verdict must agree with the findings: any material requirement discrepancy forbids `PASS`. Do not propose an interface change for an ordinary code mistake when the effective prompt already carried the requirement. Do not weaken or rewrite canonical requirements.
 
 If and only if `HARNESS` is evidenced, propose one small generalized change to `prompts/interface.md`. The proposal must help similar future tasks and must not add task-specific prompt clutter. The proposal is advisory and is not applied automatically.
 
