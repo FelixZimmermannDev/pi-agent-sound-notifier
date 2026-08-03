@@ -117,6 +117,7 @@ class WebGameView:
     termination: str | None
     revision: int
     legal_moves: tuple[str, ...]
+    premove_moves: tuple[str, ...]
     clocks: ClockView
     evaluation_bar: EvaluationSummary | None
     recommendation: tuple[CandidateView, ...]
@@ -155,6 +156,7 @@ class LocalWebGame:
         self._started = False
         self._timeout_color: chess.Color | None = None
         self._recommendation: Recommendation | None = None
+        self._pending_bot_recommendation: Recommendation | None = None
         self._moves: list[RecordedMove] = []
         self._move_assessments: list[AssessedMoveView | None] = []
         self._recording_path = (
@@ -176,9 +178,8 @@ class LocalWebGame:
             self._recommendation = self._analyze_current_position()
             self._clock.start(self._settings.player_color)
         else:
-            bot_recommendation = self._analyze_current_position()
+            self._pending_bot_recommendation = self._analyze_current_position()
             self._clock.start(self._session.snapshot().turn)
-            self._play_bot_turn(bot_recommendation)
         self._persist()
         return self.state()
 
@@ -237,8 +238,22 @@ class LocalWebGame:
             assessment,
         )
 
+        self._pending_bot_recommendation = bot_recommendation
         self._clock.start(board_after.turn)
-        self._play_bot_turn(bot_recommendation)
+        self._persist()
+        return self.state()
+
+    def play_bot_turn(self) -> WebGameView:
+        if not self._started:
+            raise SessionStateError("Start the local game before requesting a bot move.")
+        self._sync_timeout()
+        if self._is_game_over():
+            raise SessionStateError("The local game is already over.")
+        if self._session.is_player_turn:
+            raise SessionStateError("The local Stockfish opponent cannot move on your turn.")
+
+        self._play_bot_turn(self._pending_bot_recommendation)
+        self._pending_bot_recommendation = None
         self._persist()
         return self.state()
 
@@ -254,6 +269,11 @@ class LocalWebGame:
         legal_moves = (
             tuple(move.uci() for move in board.legal_moves)
             if self._started and not game_over and self._session.is_player_turn
+            else ()
+        )
+        premove_moves = (
+            self._possible_premoves(board)
+            if self._started and not game_over and not self._session.is_player_turn
             else ()
         )
         recommendation = (
@@ -276,6 +296,7 @@ class LocalWebGame:
             termination=termination,
             revision=self._session.revision,
             legal_moves=legal_moves,
+            premove_moves=premove_moves,
             clocks=ClockView(
                 white_seconds=clock.white_seconds,
                 black_seconds=clock.black_seconds,
@@ -371,6 +392,12 @@ class LocalWebGame:
             strength_elo=self._settings.coach_elo,
         )
 
+    def _possible_premoves(self, board: chess.Board) -> tuple[str, ...]:
+        premove_board = board.copy(stack=False)
+        premove_board.turn = self._settings.player_color
+        premove_board.ep_square = None
+        return tuple(move.uci() for move in premove_board.legal_moves)
+
     def _evaluation_summary(
         self,
         board: chess.Board,
@@ -380,10 +407,11 @@ class LocalWebGame:
         outcome = board.outcome(claim_draw=True)
         if outcome is not None:
             return terminal_evaluation(outcome.winner)
-        if self._recommendation is None or not self._recommendation.candidates:
+        recommendation = self._recommendation or self._pending_bot_recommendation
+        if recommendation is None or not recommendation.candidates:
             return None
         return summarize_evaluation(
-            self._recommendation.candidates[0].evaluation,
+            recommendation.candidates[0].evaluation,
             side_to_move=board.turn,
         )
 
@@ -574,6 +602,7 @@ class LocalWebGame:
         if self._timeout_color is None:
             self._timeout_color = color
             self._recommendation = None
+            self._pending_bot_recommendation = None
             self._persist()
 
     def _is_game_over(self) -> bool:

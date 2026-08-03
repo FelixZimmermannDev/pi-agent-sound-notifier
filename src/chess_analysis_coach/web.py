@@ -48,6 +48,10 @@ def create_app(game: LocalWebGame) -> Flask:
             return jsonify(error="A SAN or UCI move is required."), 400
         return jsonify(asdict(game.play_player_move(move)))
 
+    @app.post("/api/game/bot-move")
+    def play_bot_move() -> Response:
+        return jsonify(asdict(game.play_bot_turn()))
+
     @app.post("/api/game/reset")
     def reset_game() -> Response:
         return jsonify(asdict(game.reset()))

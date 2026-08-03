@@ -398,6 +398,28 @@ h2 {
   box-shadow: inset 0 0 0 clamp(4px, 0.8vw, 8px) rgb(184 228 95 / 76%);
 }
 
+.square.premove-source::before,
+.square.premove-target::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  background: rgb(96 171 224 / 38%);
+}
+
+.square.premove-target::before {
+  box-shadow: inset 0 0 0 clamp(4px, 0.8vw, 8px) rgb(99 184 238 / 82%);
+}
+
+.square.dragging {
+  cursor: grabbing;
+  filter: brightness(1.08);
+}
+
+.square.dragging .piece {
+  opacity: 0.45;
+}
+
 .square.legal-target::after {
   content: "";
   position: absolute;

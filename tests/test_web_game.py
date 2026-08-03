@@ -98,7 +98,13 @@ def test_web_game_tracks_manual_player_move_bot_reply_and_live_advice(
     assert started.evaluation_bar is not None
     assert started.evaluation_bar.white_percent > 50
 
-    after_turn = game.play_player_move("e2e4")
+    after_player_move = game.play_player_move("e2e4")
+    assert not after_player_move.is_player_turn
+    assert after_player_move.moves[0].white == "e4"
+    assert after_player_move.moves[0].black is None
+    assert "g1f3" in after_player_move.premove_moves
+
+    after_turn = game.play_bot_turn()
 
     board = chess.Board(after_turn.fen)
     assert board.piece_at(chess.E4) == chess.Piece(chess.PAWN, chess.WHITE)
@@ -133,6 +139,7 @@ def test_web_game_classifies_a_non_candidate_player_move_provisionally() -> None
 
     state = game.play_player_move("a3")
 
+    assert not state.is_player_turn
     assert state.latest_move_quality is not None
     assert state.latest_move_quality.san == "a3"
     assert state.latest_move_quality.category == "inaccuracy"
@@ -183,9 +190,15 @@ def test_web_game_plays_the_opening_bot_move_when_player_is_black() -> None:
         settings=settings(player_color=chess.BLACK),
     )
 
-    state = game.start()
+    waiting_for_bot = game.start()
 
-    assert state.player_color == "black"
+    assert waiting_for_bot.player_color == "black"
+    assert not waiting_for_bot.is_player_turn
+    assert waiting_for_bot.premove_moves
+    assert waiting_for_bot.moves == ()
+
+    state = game.play_bot_turn()
+
     assert state.is_player_turn
     assert state.evaluation_bar is not None
     assert state.evaluation_bar.white_percent < 50

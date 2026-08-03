@@ -22,7 +22,10 @@ const evaluationScoreElement = document.querySelector("#evaluation-score");
 let gameState = null;
 let selectedSquare = null;
 let selectedCandidateUci = null;
+let queuedPremoveUci = null;
+let dragSourceSquare = null;
 let requestInProgress = false;
+let botMoveInProgress = false;
 let stateReceivedAt = performance.now();
 
 async function requestJson(url, options = {}) {
@@ -99,9 +102,12 @@ function renderBoard() {
   const ranks = whiteOrientation
     ? [8, 7, 6, 5, 4, 3, 2, 1]
     : [1, 2, 3, 4, 5, 6, 7, 8];
+  const availableMoves = currentMoveOptions();
   const legalTargets = selectedSquare
-    ? gameState.legal_moves.filter(move => move.startsWith(selectedSquare))
+    ? availableMoves.filter(move => move.startsWith(selectedSquare))
     : [];
+  const premoveSource = queuedPremoveUci?.slice(0, 2);
+  const premoveTarget = queuedPremoveUci?.slice(2, 4);
   const candidates = gameState.is_player_turn ? gameState.recommendation : [];
   const selectedCandidate = candidates.find(
     candidate => candidate.uci === selectedCandidateUci,
@@ -127,6 +133,8 @@ function renderBoard() {
 
       if (squareName === coachSource) square.classList.add("coach-source");
       if (squareName === coachTarget) square.classList.add("coach-target");
+      if (squareName === premoveSource) square.classList.add("premove-source");
+      if (squareName === premoveTarget) square.classList.add("premove-target");
       if (selectedSquare === squareName) square.classList.add("selected");
       if (legalTargets.some(move => move.slice(2, 4) === squareName)) {
         square.classList.add("legal-target");
@@ -143,7 +151,14 @@ function renderBoard() {
       }
       if (fileIndex === 0) square.append(coordinateLabel("rank", String(rank)));
       if (rankIndex === 7) square.append(coordinateLabel("file", file));
+      square.draggable = Boolean(piece && isPlayerPiece(piece) && canUseBoard());
       square.addEventListener("click", () => selectSquare(squareName, pieces));
+      square.addEventListener("dragstart", event => startDrag(event, squareName, piece));
+      square.addEventListener("dragover", event => {
+        if (dragSourceSquare) event.preventDefault();
+      });
+      square.addEventListener("drop", event => dropPiece(event, squareName, pieces));
+      square.addEventListener("dragend", endDrag);
       boardElement.append(square);
     });
   });
@@ -199,16 +214,31 @@ function coordinateLabel(kind, text) {
   return label;
 }
 
-function selectSquare(square, pieces) {
-  if (!gameState.started || gameState.game_over || !gameState.is_player_turn || requestInProgress) {
-    return;
-  }
+function canUseBoard() {
+  return Boolean(
+    gameState?.started &&
+    !gameState.game_over &&
+    (gameState.is_player_turn || botMoveInProgress),
+  );
+}
 
-  const piece = pieces[square];
-  const pieceIsPlayer = piece && (
+function currentMoveOptions() {
+  if (!gameState) return [];
+  return gameState.is_player_turn ? gameState.legal_moves : gameState.premove_moves;
+}
+
+function isPlayerPiece(piece) {
+  return Boolean(piece) && (
     (gameState.player_color === "white" && piece === piece.toUpperCase()) ||
     (gameState.player_color === "black" && piece === piece.toLowerCase())
   );
+}
+
+function selectSquare(square, pieces) {
+  if (!canUseBoard() || (requestInProgress && !botMoveInProgress)) return;
+
+  const piece = pieces[square];
+  const pieceIsPlayer = isPlayerPiece(piece);
 
   if (!selectedSquare) {
     if (pieceIsPlayer) {
@@ -224,7 +254,7 @@ function selectSquare(square, pieces) {
     return;
   }
 
-  const matchingMoves = gameState.legal_moves.filter(
+  const matchingMoves = currentMoveOptions().filter(
     move => move.startsWith(selectedSquare + square),
   );
   if (matchingMoves.length === 0) {
@@ -238,21 +268,58 @@ function selectSquare(square, pieces) {
     const promotion = (window.prompt("Umwandlung: q, r, b oder n", "q") || "q").toLowerCase();
     move = matchingMoves.find(candidate => candidate.endsWith(promotion)) || matchingMoves[0];
   }
+  if (botMoveInProgress && !gameState.is_player_turn) {
+    queuedPremoveUci = move;
+    selectedSquare = null;
+    renderBoard();
+    renderStatus();
+    return;
+  }
   playMove(move);
+}
+
+function startDrag(event, square, piece) {
+  if (!canUseBoard() || !isPlayerPiece(piece)) {
+    event.preventDefault();
+    return;
+  }
+  dragSourceSquare = square;
+  selectedSquare = square;
+  event.currentTarget.classList.add("dragging");
+  event.dataTransfer.effectAllowed = "move";
+  event.dataTransfer.setData("text/plain", square);
+}
+
+function dropPiece(event, targetSquare, pieces) {
+  event.preventDefault();
+  if (!dragSourceSquare) return;
+  selectedSquare = dragSourceSquare;
+  dragSourceSquare = null;
+  selectSquare(targetSquare, pieces);
+}
+
+function endDrag() {
+  dragSourceSquare = null;
+  document.querySelectorAll(".square.dragging").forEach(square => {
+    square.classList.remove("dragging");
+  });
 }
 
 async function playMove(move) {
   requestInProgress = true;
   selectedSquare = null;
-  document.querySelector("#game-status").textContent = "Stockfish denkt …";
-  document.querySelector("#status-detail").textContent = "Dein Zug wird geprüft und der lokale Gegner antwortet.";
+  queuedPremoveUci = null;
+  document.querySelector("#game-status").textContent = "Zug wird bewertet …";
+  document.querySelector("#status-detail").textContent = "Die schnelle Live-Qualität wird berechnet.";
   renderBoard();
+  let requestBotAfterMove = false;
   try {
     const state = await requestJson("/api/game/move", {
       method: "POST",
       body: JSON.stringify({ move }),
     });
     applyState(state);
+    requestBotAfterMove = state.started && !state.game_over && !state.is_player_turn;
   } catch (error) {
     showError(error.message);
     await loadState();
@@ -260,6 +327,49 @@ async function playMove(move) {
     requestInProgress = false;
     renderStatus();
   }
+  if (requestBotAfterMove) requestBotMove();
+}
+
+async function requestBotMove() {
+  botMoveInProgress = true;
+  requestInProgress = true;
+  selectedSquare = null;
+  renderBoard();
+  renderStatus();
+  let completedState = null;
+  let premove = null;
+  try {
+    completedState = await requestJson("/api/game/bot-move", {
+      method: "POST",
+      body: "{}",
+    });
+    premove = queuedPremoveUci;
+    queuedPremoveUci = null;
+  } catch (error) {
+    queuedPremoveUci = null;
+    showError(error.message);
+    await loadState();
+  } finally {
+    botMoveInProgress = false;
+    requestInProgress = false;
+  }
+
+  if (!completedState) {
+    renderStatus();
+    renderBoard();
+    return;
+  }
+
+  applyState(completedState);
+  if (premove && completedState.legal_moves.includes(premove)) {
+    await playMove(premove);
+    return;
+  }
+  if (premove) {
+    showError(`Premove ${premove} wurde verworfen, weil er nach dem Bot-Zug nicht legal ist.`);
+  }
+  renderStatus();
+  renderBoard();
 }
 
 function renderPlayers() {
@@ -333,6 +443,7 @@ function renderStatus() {
   const status = document.querySelector("#game-status");
   const detail = document.querySelector("#status-detail");
   startButton.disabled = gameState.started || requestInProgress;
+  resetButton.disabled = requestInProgress;
 
   if (!gameState.started) {
     status.textContent = "Bereit für eine lokale Partie";
@@ -347,7 +458,9 @@ function renderStatus() {
     detail.textContent = "Wähle eine eigene Figur und danach das Zielfeld.";
   } else {
     status.textContent = "Stockfish ist am Zug";
-    detail.textContent = "Der lokale Gegner berechnet seinen Zug.";
+    detail.textContent = queuedPremoveUci
+      ? `Premove ${queuedPremoveUci} ist vorgemerkt und wird anschließend geprüft.`
+      : "Du kannst während der Berechnung einen Zug klicken oder ziehen, um ihn vorzumerken.";
   }
 }
 
@@ -513,8 +626,29 @@ function hideError() {
 startButton.addEventListener("click", async () => {
   requestInProgress = true;
   startButton.disabled = true;
+  let requestOpeningBotMove = false;
   try {
-    applyState(await requestJson("/api/game/start", { method: "POST", body: "{}" }));
+    const state = await requestJson("/api/game/start", { method: "POST", body: "{}" });
+    applyState(state);
+    requestOpeningBotMove = state.started && !state.game_over && !state.is_player_turn;
+  } catch (error) {
+    showError(error.message);
+  } finally {
+    requestInProgress = false;
+    renderStatus();
+  }
+  if (requestOpeningBotMove) requestBotMove();
+});
+
+resetButton.addEventListener("click", async () => {
+  if (gameState?.started && !window.confirm("Aktuelle Partie beenden und ein neues Brett öffnen?")) {
+    return;
+  }
+  requestInProgress = true;
+  queuedPremoveUci = null;
+  selectedSquare = null;
+  try {
+    applyState(await requestJson("/api/game/reset", { method: "POST", body: "{}" }));
   } catch (error) {
     showError(error.message);
   } finally {
@@ -523,17 +657,11 @@ startButton.addEventListener("click", async () => {
   }
 });
 
-resetButton.addEventListener("click", async () => {
-  if (gameState?.started && !window.confirm("Aktuelle Partie beenden und ein neues Brett öffnen?")) {
-    return;
-  }
-  requestInProgress = true;
-  try {
-    applyState(await requestJson("/api/game/reset", { method: "POST", body: "{}" }));
-  } catch (error) {
-    showError(error.message);
-  } finally {
-    requestInProgress = false;
+document.addEventListener("keydown", event => {
+  if (event.key === "Escape" && queuedPremoveUci) {
+    queuedPremoveUci = null;
+    selectedSquare = null;
+    renderBoard();
     renderStatus();
   }
 });
