@@ -49,10 +49,14 @@ class LocalGameSession:
         """Return a defensive board copy, including repetition history."""
         return self._board.copy(stack=True)
 
-    def apply_player_move(self, notation: str) -> PlayedMove:
+    def parse_player_move(self, notation: str) -> chess.Move:
+        """Validate player notation without changing session state."""
         if not self.is_player_turn:
             raise SessionStateError("Wait for the local Stockfish opponent to move.")
-        move = self._parse_move(notation)
+        return self._parse_move(notation)
+
+    def apply_player_move(self, notation: str) -> PlayedMove:
+        move = self.parse_player_move(notation)
         return self._apply_legal_move(move)
 
     def apply_bot_move(self, move: chess.Move) -> PlayedMove:

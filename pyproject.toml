@@ -4,12 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "chess-analysis-coach"
-version = "0.1.0"
+version = "0.2.0"
 description = "A live analysis coach for permitted local chess practice"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "chess>=1.11,<2",
+    "Flask>=3.1,<4",
 ]
 
 [project.optional-dependencies]
@@ -19,6 +20,9 @@ dev = [
 
 [project.scripts]
 chess-coach = "chess_analysis_coach.cli:main"
+
+[tool.setuptools.package-data]
+chess_analysis_coach = ["templates/*.html", "static/*.css", "static/*.js"]
 
 [tool.pytest.ini_options]
 addopts = "-q"

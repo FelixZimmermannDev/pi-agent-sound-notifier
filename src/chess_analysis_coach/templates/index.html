@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chess Analysis Coach</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">Lokaler Prototyp</p>
+      <h1>Chess Analysis Coach</h1>
+    </div>
+    <span class="local-badge">Nur auf diesem Computer</span>
+  </header>
+
+  <main class="game-shell">
+    <section class="board-column" aria-label="Lokales Schachspiel">
+      <div class="player-strip opponent-strip">
+        <div>
+          <strong id="top-player-name">Stockfish</strong>
+          <span id="top-player-detail">Lokaler Gegner</span>
+        </div>
+        <time id="top-clock" class="clock">10:00</time>
+      </div>
+
+      <div id="board" class="board" role="grid" aria-label="Schachbrett"></div>
+
+      <div class="player-strip player-strip-self">
+        <div>
+          <strong id="bottom-player-name">Du</strong>
+          <span id="bottom-player-detail">Weiß</span>
+        </div>
+        <time id="bottom-clock" class="clock">10:00</time>
+      </div>
+    </section>
+
+    <aside class="side-panel">
+      <section class="panel-section game-controls">
+        <div>
+          <p class="eyebrow">Partiestatus</p>
+          <h2 id="game-status">Bereit für eine lokale Partie</h2>
+          <p id="status-detail">Starte die Uhr, wenn du bereit bist.</p>
+        </div>
+        <div class="button-row">
+          <button id="start-button" class="primary-button" type="button">Partie starten</button>
+          <button id="reset-button" class="secondary-button" type="button">Neue Partie</button>
+          <a id="pgn-button" class="secondary-button link-button" href="/api/game/pgn">PGN herunterladen</a>
+        </div>
+        <p id="error-message" class="error-message" role="alert" hidden></p>
+      </section>
+
+      <section class="panel-section coach-section">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Live-Coach</p>
+            <h2>Zugempfehlungen</h2>
+          </div>
+          <span id="coach-state" class="state-pill">Wartet</span>
+        </div>
+        <div id="recommendations" class="recommendations">
+          <p class="empty-state">Nach dem Start erscheinen hier Stockfish-Kandidaten und taktische Hinweise.</p>
+        </div>
+      </section>
+
+      <section class="panel-section moves-section">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Aufzeichnung</p>
+            <h2>Partieverlauf</h2>
+          </div>
+          <span id="recording-name" class="recording-name">PGN</span>
+        </div>
+        <div class="move-table-wrap">
+          <table class="move-table">
+            <thead>
+              <tr><th>#</th><th>Weiß</th><th>Schwarz</th></tr>
+            </thead>
+            <tbody id="move-list">
+              <tr><td colspan="3" class="empty-cell">Noch keine Züge</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </aside>
+  </main>
+
+  <footer>
+    Empfehlungen werden nur angezeigt. Deinen Zug führst immer du selbst aus.
+  </footer>
+</body>
+</html>

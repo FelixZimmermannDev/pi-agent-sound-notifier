@@ -8,20 +8,28 @@ Chess Analysis Coach is a dependable local Python application that explains and 
 
 ## Currently implemented
 
-Two terminal workflows are implemented:
+Three local workflows are implemented:
 
 ```text
 Quoted FEN → validation → defensive board copy → bounded Stockfish MultiPV
            → typed recommendation → terminal presentation
 
-Local session → recommendation for current revision → player SAN/UCI move
-              → recommendation for new revision → Elo-limited bot move → repeat
+Terminal session → recommendation → player SAN/UCI move
+                 → Elo-limited local bot move → repeat
+
+Local browser → start clock → player click move → server validation
+              → Elo-limited local bot move → player-only recommendation
+              → browser state + incremental PGN snapshot
 ```
 
-- `chess_analysis_coach.cli` owns the `analyze` and `play` commands, Stockfish path discovery, terminal output, and exit codes.
+- `chess_analysis_coach.cli` owns the `analyze`, `play`, and `web` commands, Stockfish path discovery, process lifetime, terminal output, and exit codes.
 - `python-chess` owns chess rules, FEN, SAN/UCI conversion, score handling, game outcomes, and UCI communication.
 - `LocalGameSession` is the single owner of interactive board state. It applies legal player/bot moves, increments a monotonic revision, supports bounded undo, and exposes defensive snapshots.
 - The synchronous terminal prototype requests one recommendation for each new position revision and never reanalyzes unchanged state after informational commands or rejected moves.
+- `LocalWebGame` coordinates one browser game without putting chess rules into HTTP routes or JavaScript. It accepts only player-selected legal moves, invokes Stockfish only for the opponent, and publishes recommendations only on the player's turn.
+- `ChessClock` is the server-side authority for both countdowns and increment. Browser countdown animation is presentation only; polling reconciles it with server time.
+- The Flask adapter binds only to `127.0.0.1`. It serves a packaged HTML/CSS/JavaScript board and a narrow JSON API; it is not a public web application.
+- Browser games are incrementally written as PGN snapshots under the ignored `output/games` directory. Player moves include the current top live recommendation as a PGN comment, and the same PGN can be downloaded through the local UI.
 - The Stockfish adapter starts the external process only when entering its context and guarantees a shutdown attempt on every exit path.
 - Analysis and bot work use separate explicit time limits. Current CLI defaults are 250 ms and three candidates.
 - Stockfish opponent strength is selectable through its supported `UCI_Elo` range of 1320–3190. Coaching is full strength by default and can be limited independently.
@@ -53,13 +61,13 @@ Structured recommendation + coaching explanation
 
 ### Position sources
 
-A position source emits a complete position or a proposed move. It does not invoke Stockfish or format recommendations. The first live source is the implemented interactive terminal session with direct legal move input, because it is deterministic and gives exact board state. Additional local sources should adapt into the same session boundary.
+A position source emits a complete position or a proposed move. It does not invoke Stockfish or format recommendations. The implemented terminal and localhost-board sources both submit direct legal move input, which is deterministic and gives exact board state. Additional local sources should adapt into the same session boundary.
 
-The project does not implement active chess-site polling, chess-site screen reading, or browser automation. Completed online games remain separate and may enter only the post-match workflow through documented public endpoints.
+The implemented graphical source is the localhost board. The project does not implement active chess-site polling, chess-site screen reading, or browser automation. A future manual companion may accept moves that the user explicitly enters from a permitted bot game; completed online games remain separate and may enter post-match analysis through documented public endpoints.
 
 ### Live session
 
-The session is the single owner of the current board and move history. It validates every transition with `python-chess`, exposes immutable snapshots to analysis, and keeps state unchanged after rejected input. This boundary supports a future terminal session and local graphical board without moving chess state into presentation code.
+The session is the single owner of the current board and move history. It validates every transition with `python-chess`, exposes immutable snapshots to analysis, and keeps state unchanged after rejected input. Both terminal and browser presentation use this boundary without moving chess state into presentation code.
 
 ### Latest-position analysis
 
@@ -67,7 +75,9 @@ Live analysis must not let old results overwrite newer recommendations. The coor
 
 ### Coaching and recording
 
-Engine scores and principal variations remain structured input to a separate coaching component. Live explanations should be concise and latency-aware; deeper post-match work may use larger limits. Recording should preserve moves, timing, live recommendations, and later comparison results without making persistence a requirement of basic analysis.
+Engine scores and principal variations are structured input to a separate coaching component. The browser prototype derives small deterministic cues for checks, captures, castling, promotion, and visible multi-attacks. These cues deliberately do not claim to be deep tactical proof. Deeper post-match work will use larger limits and classify critical decisions.
+
+Basic PGN recording now preserves moves, clock values, results, and the top live recommendation attached to player moves. A future post-match report may add deeper comparison results without changing game-state ownership.
 
 ## State and dependency guidance
 
@@ -95,11 +105,11 @@ Engine scores and principal variations remain structured input to a separate coa
 
 ## Next implementation slices
 
-1. Move engine work behind a latest-position background coordinator so input and presentation are not blocked and stale results cannot be published.
-2. Add a local graphical board that emits direct move events into `LocalGameSession`.
-3. Add concise coaching explanations based on score changes, legal threats, and principal variations.
-4. Record local sessions and compare fast live results with deeper post-match analysis.
-5. Add optional local position-source adapters only when the core live workflow is stable.
+1. Add deep post-game analysis that compares played moves with a larger Stockfish budget and reports evaluation loss and critical moments.
+2. Move engine work behind a latest-position background coordinator so browser requests are not blocked and stale results cannot be published.
+3. Expand deterministic coaching from basic tactical cues to score-change, threat, and positional explanations.
+4. Add a manual external-bot companion only for an explicitly permitted mode; keep it independent from website acquisition or control.
+5. Add thesis-oriented exports and metrics once live and deep-analysis outputs are stable.
 
 Do not create empty adapters or interfaces for later sources before the current vertical slice needs them.
 
@@ -107,8 +117,7 @@ Do not create empty adapters or interfaces for later sources before the current 
 
 Ask only when implementation evidence makes one of these choices material:
 
-- Which local user interface should follow the terminal session (desktop, browser served only on localhost, or another local UI)
-- Whether the first recognition experiment targets a local application, a PGN stream, or a physical board
+- Whether the first optional external position-source experiment should be manual move relay, a permitted local PGN stream, or a physical board
 - Which live and deep-analysis budgets should be used in thesis experiments
 - Which objective and subjective metrics define coaching usefulness
 - Whether session recording should use PGN annotations, JSON, or a small local database

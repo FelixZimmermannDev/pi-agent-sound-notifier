@@ -4,17 +4,21 @@ A local Python application for **live move recommendations during permitted loca
 
 ## Current status
 
-Two working terminal workflows are implemented:
+Three local workflows are implemented:
 
 ```text
 FEN → validation → bounded Stockfish MultiPV → ranked recommendations
 
-interactive local game → recommendation for every current position
-                       → player SAN/UCI move or Elo-limited Stockfish move
-                       → explicit session state until game end or quit
+terminal game → recommendation → player SAN/UCI move → local Stockfish reply
+
+localhost browser game → clickable board + two chess clocks
+                       → recommendations only for the player's turn
+                       → local Stockfish reply + move list + PGN snapshot
 ```
 
-Stockfish 18 was discovered from the local winget installation and verified with real bounded analysis and local play. Deterministic tests cover position and move errors, state ownership, analysis coordination, Elo configuration, Stockfish-output transformation, cleanup, presentation, and CLI behavior. A separate opt-in test exercises the real executable.
+The browser prototype is served only on `127.0.0.1`. It never plays the player's recommended move: the player selects and submits every own move, while Stockfish controls only the local opponent. Candidate cards include evaluations, principal variations, and small deterministic tactical cues. Every played move, clock value, and current result is recorded as PGN under `output/games` and can also be downloaded in the browser.
+
+Stockfish 18 was discovered from the local winget installation and verified with real bounded analysis and local play. Deterministic tests cover position and move errors, state ownership, clock behavior, PGN recording, browser API coordination, analysis, Elo configuration, Stockfish-output transformation, cleanup, presentation, and CLI behavior. A separate opt-in test exercises the real executable.
 
 ## Fair-play boundary
 
@@ -41,6 +45,12 @@ cd C:\Users\Felix\Code\Projects\PythonProject\chess-analysis-coach
 python -m pip install -e ".[dev]"
 python -m pytest
 python -m chess_analysis_coach
+```
+
+If `python` is not globally available or the environment is not activated, invoke the project interpreter directly:
+
+```powershell
+.\.venv\Scripts\python.exe -m chess_analysis_coach --help
 ```
 
 ## Stockfish
@@ -97,7 +107,32 @@ During play, enter:
 - UCI, such as `e2e4` or `g1f3`;
 - `undo`, `fen`, `help`, or `quit`.
 
-The synchronous prototype deliberately displays a recommendation for every new position, including the position after the player's move and before the bot response.
+The synchronous terminal prototype deliberately displays a recommendation for every new position, including the position after the player's move and before the bot response.
+
+## Play in the local browser prototype
+
+Start a ten-minute game as White. The default browser opens automatically:
+
+```powershell
+.\.venv\Scripts\python.exe -m chess_analysis_coach web `
+  --player-color white `
+  --bot-elo 1500 `
+  --minutes 10
+```
+
+Example with a five-minute clock and three-second increment:
+
+```powershell
+.\.venv\Scripts\python.exe -m chess_analysis_coach web `
+  --player-color black `
+  --bot-elo 1800 `
+  --minutes 5 `
+  --increment-seconds 3
+```
+
+The application binds to `http://127.0.0.1:8765`. Use `--no-browser` to suppress automatic browser opening or `--port 9000` to select another local port. Click **Partie starten**, then select a piece and its destination square. PGN snapshots are written after every move to `output/games`; this generated directory is ignored by Git.
+
+This first graphical slice remains synchronous: a move request waits briefly for the bounded bot move and new coaching analysis. Deep post-game mistake classification is not implemented yet.
 
 ## Verification
 
@@ -117,10 +152,10 @@ python -m pytest tests/test_stockfish_integration.py
 ## Development sequence
 
 1. **Bounded position analysis** — implemented and real-engine verified.
-2. **Synchronous interactive local game** — implemented with legal move input, undo, game termination, live recommendations, and selectable bot/coach Elo.
-3. **Low-latency live pipeline** — move analysis into the background, cancel stale work, and publish only the newest position's result.
-4. **Local board interface** — provide a usable local graphical board and direct move events; keep position-source adapters separate.
-5. **Coaching explanations** — translate engine lines into concise tactical and positional learning notes.
-6. **Session recording and post-match analysis** — compare fast live recommendations with deeper analysis and identify critical moments.
-7. **Optional local recognition adapters** — local PGN stream, local application integration, or physical-board camera recognition.
-8. **Bachelor-thesis evaluation** — measure latency, recommendation stability, recognition accuracy, and usefulness compared with deeper post-match analysis.
+2. **Synchronous interactive terminal game** — implemented with legal move input, undo, game termination, live recommendations, and selectable bot/coach Elo.
+3. **Clocked localhost browser game** — implemented with a clickable board, recommendations for the player's side, local opponent moves, two countdown clocks, move history, and incremental PGN recording.
+4. **Deep post-game analysis** — compare each played move with deeper Stockfish analysis and identify inaccuracies, mistakes, blunders, and critical moments.
+5. **Low-latency live pipeline** — move analysis into the background, cancel stale work, and publish only the newest position's result.
+6. **Richer coaching explanations** — expand the first tactical cues into concise tactical and positional learning notes.
+7. **External bot companion mode** — accept manually entered moves from an explicitly permitted external bot game without reading or controlling a website.
+8. **Bachelor-thesis evaluation** — measure latency, recommendation stability, explanation usefulness, and agreement with deeper post-match analysis.

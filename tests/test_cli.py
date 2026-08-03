@@ -3,7 +3,7 @@ from types import TracebackType
 import chess
 
 from chess_analysis_coach.application import PositionAnalyzer
-from chess_analysis_coach.cli import main
+from chess_analysis_coach.cli import build_parser, main
 from chess_analysis_coach.errors import EngineUnavailableError
 from chess_analysis_coach.models import CandidateMove, Evaluation
 
@@ -58,6 +58,30 @@ class FakeAnalyzerContext:
 class UnavailableAnalyzerContext(FakeAnalyzerContext):
     def __enter__(self) -> PositionAnalyzer:
         raise EngineUnavailableError("Stockfish is missing")
+
+
+def test_cli_accepts_local_web_game_settings() -> None:
+    options = build_parser().parse_args(
+        [
+            "web",
+            "--player-color",
+            "black",
+            "--minutes",
+            "5",
+            "--increment-seconds",
+            "3",
+            "--port",
+            "9000",
+            "--no-browser",
+        ]
+    )
+
+    assert options.command == "web"
+    assert options.player_color == "black"
+    assert options.minutes == 5
+    assert options.increment_seconds == 3
+    assert options.port == 9000
+    assert options.no_browser
 
 
 def test_cli_without_command_lists_available_workflows(capsys) -> None:

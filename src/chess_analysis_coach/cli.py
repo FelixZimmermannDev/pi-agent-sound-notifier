@@ -21,10 +21,13 @@ from chess_analysis_coach.stockfish import (
     MIN_STOCKFISH_ELO,
     StockfishAnalyzer,
 )
+from chess_analysis_coach.web_game import WebGameSettings
 
 _DEFAULT_TIME_MS = 250
 _DEFAULT_CANDIDATES = 3
 _DEFAULT_BOT_ELO = 1500
+_DEFAULT_CLOCK_MINUTES = 10
+_DEFAULT_WEB_PORT = 8765
 AnalyzerFactory = Callable[[str], AbstractContextManager[PositionAnalyzer]]
 
 
@@ -35,6 +38,23 @@ def _positive_integer(value: str) -> int:
         raise argparse.ArgumentTypeError("must be a whole number") from error
     if parsed_value <= 0:
         raise argparse.ArgumentTypeError("must be greater than zero")
+    return parsed_value
+
+
+def _non_negative_integer(value: str) -> int:
+    try:
+        parsed_value = int(value)
+    except ValueError as error:
+        raise argparse.ArgumentTypeError("must be a whole number") from error
+    if parsed_value < 0:
+        raise argparse.ArgumentTypeError("must be zero or greater")
+    return parsed_value
+
+
+def _port_number(value: str) -> int:
+    parsed_value = _positive_integer(value)
+    if parsed_value > 65535:
+        raise argparse.ArgumentTypeError("must be between 1 and 65535")
     return parsed_value
 
 
@@ -133,6 +153,62 @@ def build_parser() -> argparse.ArgumentParser:
     )
     _add_engine_argument(play_parser)
     _add_coach_arguments(play_parser)
+
+    web_parser = commands.add_parser(
+        "web",
+        help="open a clocked local browser game with live coaching",
+    )
+    web_parser.add_argument(
+        "--player-color",
+        choices=("white", "black"),
+        default="white",
+        help="your color in the local game (default: white)",
+    )
+    web_parser.add_argument(
+        "--bot-elo",
+        type=_stockfish_elo,
+        default=_DEFAULT_BOT_ELO,
+        help=(
+            f"local opponent strength from {MIN_STOCKFISH_ELO} to "
+            f"{MAX_STOCKFISH_ELO} (default: {_DEFAULT_BOT_ELO})"
+        ),
+    )
+    web_parser.add_argument(
+        "--bot-time-ms",
+        type=_positive_integer,
+        default=_DEFAULT_TIME_MS,
+        help=f"opponent thinking time per move (default: {_DEFAULT_TIME_MS} ms)",
+    )
+    web_parser.add_argument(
+        "--minutes",
+        type=_positive_integer,
+        default=_DEFAULT_CLOCK_MINUTES,
+        help=f"initial clock minutes per side (default: {_DEFAULT_CLOCK_MINUTES})",
+    )
+    web_parser.add_argument(
+        "--increment-seconds",
+        type=_non_negative_integer,
+        default=0,
+        help="clock increment after each move (default: 0 seconds)",
+    )
+    web_parser.add_argument(
+        "--port",
+        type=_port_number,
+        default=_DEFAULT_WEB_PORT,
+        help=f"localhost port (default: {_DEFAULT_WEB_PORT})",
+    )
+    web_parser.add_argument(
+        "--no-browser",
+        action="store_true",
+        help="start the local server without opening a browser window",
+    )
+    web_parser.add_argument(
+        "--fen",
+        default=chess.STARTING_FEN,
+        help="optional starting FEN; default is the standard starting position",
+    )
+    _add_engine_argument(web_parser)
+    _add_coach_arguments(web_parser)
     return parser
 
 
@@ -188,19 +264,40 @@ def main(
                 live_engine = analyzer
                 if not isinstance(live_engine, LocalGameEngine):
                     raise TypeError("The configured engine does not support local play.")
-                run_local_game(
-                    live_engine,
-                    board=board,
-                    player_color=(
-                        chess.WHITE if options.player_color == "white" else chess.BLACK
-                    ),
-                    bot_elo=options.bot_elo,
-                    coach_elo=options.coach_elo,
-                    coach_time_seconds=options.time_ms / 1000,
-                    bot_time_seconds=options.bot_time_ms / 1000,
-                    candidate_count=options.candidates,
-                    input_function=input_function,
+                player_color = (
+                    chess.WHITE if options.player_color == "white" else chess.BLACK
                 )
+                if options.command == "play":
+                    run_local_game(
+                        live_engine,
+                        board=board,
+                        player_color=player_color,
+                        bot_elo=options.bot_elo,
+                        coach_elo=options.coach_elo,
+                        coach_time_seconds=options.time_ms / 1000,
+                        bot_time_seconds=options.bot_time_ms / 1000,
+                        candidate_count=options.candidates,
+                        input_function=input_function,
+                    )
+                else:
+                    from chess_analysis_coach.web import run_local_web_game
+
+                    run_local_web_game(
+                        live_engine,
+                        board=board,
+                        settings=WebGameSettings(
+                            player_color=player_color,
+                            bot_elo=options.bot_elo,
+                            coach_elo=options.coach_elo,
+                            coach_time_seconds=options.time_ms / 1000,
+                            bot_time_seconds=options.bot_time_ms / 1000,
+                            candidate_count=options.candidates,
+                            initial_seconds=options.minutes * 60,
+                            increment_seconds=options.increment_seconds,
+                        ),
+                        port=options.port,
+                        open_browser=not options.no_browser,
+                    )
     except PositionError as error:
         print(f"Position error: {error}", file=sys.stderr)
         return 2

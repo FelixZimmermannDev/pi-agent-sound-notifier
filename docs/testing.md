@@ -47,9 +47,11 @@ Use a small fake or injected collaborator when testing that analysis coordinatio
 
 Use a real local Stockfish executable selectively to verify UCI startup, one small bounded analysis, and clean shutdown. Mark or isolate these tests so the normal suite can still run when Stockfish is unavailable. Never claim engine integration works when only fake-engine tests ran.
 
-### Level 4: Terminal workflow
+### Level 4: Local user interfaces
 
-Once stable, test a small number of complete CLI paths: valid FEN, invalid FEN, missing engine, and successful recommendation output. Prefer invoking the Python entry point without spawning a subprocess unless process behavior matters.
+For the terminal, test a small number of complete CLI paths: valid FEN, invalid FEN, missing engine, and successful recommendation output. Prefer invoking the Python entry point without spawning a subprocess unless process behavior matters.
+
+For the localhost browser workflow, test clock and game coordination below HTTP first, then use Flask's test client for page, start, move, error, and PGN-download routes. A practical real-boundary smoke check should serve the packaged page on `127.0.0.1`, use real Stockfish for one complete turn, and shut both HTTP and engine resources down explicitly. Browser layout and click interaction still require a short manual check because API tests do not verify visual behavior.
 
 ### Level 5: External data
 
@@ -63,6 +65,8 @@ Tests normally add value for:
 - legal-move and recommendation transformation;
 - evaluation and mate-score presentation rules;
 - explicit state changes in an interactive local session;
+- server-authoritative countdown, increment, and timeout behavior;
+- browser API move coordination and incremental PGN recording;
 - engine startup, failure handling, limits, and shutdown;
 - bug fixes and regressions.
 
