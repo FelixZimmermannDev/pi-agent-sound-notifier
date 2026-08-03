@@ -3,15 +3,13 @@
 import argparse
 from collections.abc import Callable, Sequence
 from contextlib import AbstractContextManager
-import os
-from pathlib import Path
-import shutil
 import sys
 
 import chess
 
 from chess_analysis_coach import __version__
 from chess_analysis_coach.application import PositionAnalyzer, recommend_moves
+from chess_analysis_coach.engine_discovery import resolve_engine_path
 from chess_analysis_coach.errors import EngineError, PositionError, SessionError
 from chess_analysis_coach.live import InputFunction, LocalGameEngine, run_local_game
 from chess_analysis_coach.positions import parse_fen
@@ -214,6 +212,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="start the local server without opening a browser window",
     )
     web_parser.add_argument(
+        "--no-coach",
+        action="store_true",
+        help="hide and skip web coaching so the permitted desktop overlay can coach",
+    )
+    web_parser.add_argument(
         "--fen",
         default=chess.STARTING_FEN,
         help="optional starting FEN; default is the standard starting position",
@@ -221,27 +224,6 @@ def build_parser() -> argparse.ArgumentParser:
     _add_engine_argument(web_parser)
     _add_coach_arguments(web_parser, candidate_type=_browser_candidate_count)
     return parser
-
-
-def resolve_engine_path(command_line_path: str | None) -> str:
-    explicit_path = command_line_path or os.environ.get("STOCKFISH_PATH")
-    if explicit_path:
-        return explicit_path
-
-    path_executable = shutil.which("stockfish")
-    if path_executable:
-        return path_executable
-
-    local_app_data = os.environ.get("LOCALAPPDATA")
-    if local_app_data:
-        package_root = Path(local_app_data) / "Microsoft" / "WinGet" / "Packages"
-        candidates = sorted(
-            package_root.glob("Stockfish.Stockfish_*/stockfish/stockfish*.exe")
-        )
-        if candidates:
-            return str(candidates[-1])
-
-    return "stockfish"
 
 
 def main(
@@ -305,6 +287,7 @@ def main(
                             candidate_count=options.candidates,
                             initial_seconds=options.minutes * 60,
                             increment_seconds=options.increment_seconds,
+                            coaching_enabled=not options.no_coach,
                         ),
                         port=options.port,
                         open_browser=not options.no_browser,

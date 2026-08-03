@@ -7,12 +7,12 @@ from typing import Protocol
 import chess
 
 from chess_analysis_coach.application import PositionAnalyzer, recommend_moves
-from chess_analysis_coach.coaching import (
-    CandidateForecast,
-    build_candidate_forecast,
-    explain_candidate,
-    explain_candidate_plan,
+from chess_analysis_coach.background_analysis import (
+    CoachedCandidate,
+    RevisionedPosition,
+    analyze_revisioned_position,
 )
+from chess_analysis_coach.coaching import CandidateForecast
 from chess_analysis_coach.errors import InvalidMoveError, SessionStateError
 from chess_analysis_coach.evaluation import (
     EvaluationSummary,
@@ -53,6 +53,7 @@ class WebGameSettings:
     candidate_count: int
     initial_seconds: float
     increment_seconds: float = 0
+    coaching_enabled: bool = True
 
     def __post_init__(self) -> None:
         if self.coach_time_seconds <= 0 or self.bot_time_seconds <= 0:
@@ -136,6 +137,7 @@ class WebGameView:
     coach_time_ms: int
     bot_time_ms: int
     turn: str
+    coaching_enabled: bool
     started: bool
     game_over: bool
     is_player_turn: bool
@@ -182,6 +184,7 @@ class LocalWebGame:
         self._started = False
         self._timeout_color: chess.Color | None = None
         self._recommendation: Recommendation | None = None
+        self._coached_candidates: tuple[CoachedCandidate, ...] = ()
         self._pending_bot_recommendation: Recommendation | None = None
         self._position_evaluation: Evaluation | None = None
         self._moves: list[RecordedMove] = []
@@ -241,10 +244,12 @@ class LocalWebGame:
             return self.state()
 
         if self._session.is_player_turn:
-            self._recommendation = self._analyze_current_position()
+            if self._settings.coaching_enabled:
+                self._recommendation = self._analyze_current_position()
             self._clock.start(self._settings.player_color)
         else:
-            self._pending_bot_recommendation = self._analyze_current_position()
+            if self._settings.coaching_enabled:
+                self._pending_bot_recommendation = self._analyze_current_position()
             self._clock.start(self._session.snapshot().turn)
         self._persist()
         return self.state()
@@ -288,7 +293,11 @@ class LocalWebGame:
             return self.state()
 
         board_after = self._session.snapshot()
-        bot_recommendation = self._analyze_current_position()
+        bot_recommendation = (
+            self._analyze_current_position()
+            if self._settings.coaching_enabled
+            else None
+        )
         assessment = self._assess_played_move(
             recommendation_before=recommendation_before,
             board_before=board_before,
@@ -358,6 +367,7 @@ class LocalWebGame:
             coach_time_ms=round(self._settings.coach_time_seconds * 1000),
             bot_time_ms=round(self._settings.bot_time_seconds * 1000),
             turn=_color_name(board.turn),
+            coaching_enabled=self._settings.coaching_enabled,
             started=self._started,
             game_over=game_over,
             is_player_turn=(
@@ -441,7 +451,11 @@ class LocalWebGame:
             return
 
         board_after = self._session.snapshot()
-        player_recommendation = self._analyze_current_position()
+        player_recommendation = (
+            self._analyze_current_position()
+            if self._settings.coaching_enabled
+            else None
+        )
         assessment = self._assess_played_move(
             recommendation_before=recommendation_before,
             board_before=board_before,
@@ -456,13 +470,15 @@ class LocalWebGame:
 
     def _analyze_current_position(self) -> Recommendation:
         board = self._session.snapshot()
-        recommendation = recommend_moves(
-            board,
+        coached_analysis = analyze_revisioned_position(
+            RevisionedPosition(self._session.revision, board.fen()),
             self._engine,
             time_limit_seconds=self._settings.coach_time_seconds,
             candidate_count=self._settings.candidate_count,
             strength_elo=self._settings.coach_elo,
         )
+        recommendation = coached_analysis.recommendation
+        self._coached_candidates = coached_analysis.candidates
         if self._settings.coach_elo is None:
             self._position_evaluation = recommendation.candidates[0].evaluation
         else:
@@ -499,8 +515,12 @@ class LocalWebGame:
         )
 
     def _candidate_views(self, board: chess.Board) -> tuple[CandidateView, ...]:
+        del board
         if self._recommendation is None:
             return ()
+        coaching_by_uci = {
+            coached.candidate.uci: coached for coached in self._coached_candidates
+        }
         return tuple(
             CandidateView(
                 rank=rank,
@@ -509,9 +529,9 @@ class LocalWebGame:
                 evaluation=format_evaluation(candidate.evaluation),
                 variation=candidate.principal_variation_san,
                 variation_uci=candidate.principal_variation_uci,
-                explanation=explain_candidate(board, candidate),
-                plan=explain_candidate_plan(board, candidate),
-                forecast=build_candidate_forecast(board, candidate),
+                explanation=coaching_by_uci[candidate.uci].explanation,
+                plan=coaching_by_uci[candidate.uci].plan,
+                forecast=coaching_by_uci[candidate.uci].forecast,
             )
             for rank, candidate in enumerate(self._recommendation.candidates, start=1)
         )

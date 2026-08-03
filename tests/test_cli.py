@@ -73,6 +73,7 @@ def test_cli_accepts_local_web_game_settings() -> None:
             "--port",
             "9000",
             "--no-browser",
+            "--no-coach",
         ]
     )
 
@@ -83,6 +84,7 @@ def test_cli_accepts_local_web_game_settings() -> None:
     assert options.candidates == 1
     assert options.port == 9000
     assert options.no_browser
+    assert options.no_coach
 
 
 def test_cli_without_command_lists_available_workflows(capsys) -> None:

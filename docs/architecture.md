@@ -22,6 +22,11 @@ Local browser → player-only MultiPV recommendation + fixed evaluation bar
               → intermediate bot-turn state → optional local premove queue
               → Elo-limited bot move → validate/apply or reject premove
               → next recommendation + incremental annotated PGN snapshot
+
+Permitted local screen → DXCAM frame in RAM → stable 8×8 observation
+                       → unique legal move reconciliation + position revision
+                       → latest-only bounded Stockfish/coaching analysis
+                       → click-through revision-bound desktop overlay
 ```
 
 - `chess_analysis_coach.cli` owns the `analyze`, `play`, and `web` commands, Stockfish path discovery, process lifetime, terminal output, and exit codes.
@@ -30,12 +35,14 @@ Local browser → player-only MultiPV recommendation + fixed evaluation bar
 - The synchronous terminal prototype requests one recommendation for each new position revision and never reanalyzes unchanged state after informational commands or rejected moves.
 - `LocalWebGame` coordinates one browser game without putting chess rules into HTTP routes or JavaScript. It accepts only player-selected legal moves, invokes Stockfish for the local opponent, and publishes recommendations only on the player's turn.
 - The browser supports click and native drag input through the same legal-move submission path. Dragging changes presentation only until the validated API call succeeds.
+- The optional `side_projects/chess_overlay` package is a separate Windows presentation and position source for permitted local/offline boards. DXCAM reads only its configured rectangle, raw frames remain in reusable memory, and compact occupancy/signature observations—not images—cross into chess synchronization. It calibrates from the standard starting position and accepts a visual change only when stable frames match exactly one legal `python-chess` move. The reconciler is the single owner of this logical board and exposes FEN snapshots with a monotonic revision.
+- The desktop overlay runs recognition and DXCAM outside the Qt UI thread and owns a latest-position analysis coordinator. Stockfish remains bounded; an in-flight stale result is discarded when a newer revision arrives, and the presentation independently verifies revision and FEN before publishing an arrow or coaching text. F8 changes presentation visibility only, while F6 controls frame editing/capture and F9 explicitly resets synchronization to the standard position.
 - Player and bot phases use separate HTTP operations. During the blocking bot operation, JavaScript may queue one local premove from a server-provided bounded candidate set. After the bot response, the premove is submitted only when it is legal in the actual resulting position; otherwise it is discarded without mutating server state.
 - Before game start, the browser may configure one, two, or three MultiPV candidates, local opponent Elo, and an independent limited or maximum-strength coach through the validated game boundary. One candidate, 1500 opponent Elo, and maximum coach strength are the defaults; behavioral settings are immutable during a running game. The candidates appear as selectable color-matched root arrows. Arrow selection and forecast visibility are presentation state and never apply a move. Opponent and own continuation modes independently support off, relevant-only, or all, with relevant-only as the default. The Stockfish adapter preserves up to six UCI principal-variation plies; presentation draws at most the selected candidate's expected reply and next own move as numbered dashed arrows.
 - The evaluation bar uses a separate unrestricted position evaluation whenever coaching is Elo-limited, so randomized weak candidate selection cannot distort the objective reference. A transparent bounded logistic win-chance curve converts centipawns to a fixed White-perspective visual share. Presentation applies a 2-point deadband and a 650 ms transition; mate and terminal results always target the winning side. Chess.com's exact production geometry is not treated as known or copied because no official formula or frontend source is published.
 - After a move, a second bounded position evaluation estimates normalized evaluation-share loss. Transparent thresholds produce a provisional category and per-color running mean. This metric is intentionally not called or treated as Chess.com's proprietary Accuracy.
 - `ChessClock` is the server-side authority for both countdowns and increment. Browser countdown animation is presentation only; polling reconciles it with server time. Coach-only evaluation runs while both game clocks are stopped, so application overhead is not charged to either side.
-- The Flask adapter binds only to `127.0.0.1`. It serves a packaged HTML/CSS/JavaScript board and a narrow JSON API; it is not a public web application.
+- The Flask adapter binds only to `127.0.0.1`. It serves a packaged HTML/CSS/JavaScript board and a narrow JSON API; it is not a public web application. Its optional `--no-coach` mode skips web recommendation/evaluation work while preserving the local Stockfish opponent, allowing the independent desktop overlay to be the only coaching presentation.
 - Browser games are incrementally written as PGN snapshots under the ignored `output/games` directory. Player moves include the current top live recommendation as a PGN comment, and the same PGN can be downloaded through the local UI.
 - The Stockfish adapter starts the external process only when entering its context and guarantees a shutdown attempt on every exit path.
 - Analysis and bot work use separate explicit time limits. Both default to 250 ms so local strength comparisons use equal move-selection budgets; the browser exposes the actual budgets for verification. The localhost game allows at most three candidates.
@@ -70,7 +77,7 @@ Structured recommendation + coaching explanation
 
 A position source emits a complete position or a proposed move. It does not invoke Stockfish or format recommendations. The implemented terminal and localhost-board sources both submit direct legal move input, which is deterministic and gives exact board state. Additional local sources should adapt into the same session boundary.
 
-The implemented graphical source is the localhost board. The project does not implement active chess-site polling, chess-site screen reading, or browser automation. A future manual companion may accept moves that the user explicitly enters from a permitted bot game; completed online games remain separate and may enter post-match analysis through documented public endpoints.
+The implemented graphical sources are the direct localhost board and the optional desktop recognizer for a user-calibrated local/offline 8×8 board. The latter is deliberately generic: it has no URL, DOM, browser-control, or platform-specific adapter and must not be used over an active chess website. A screenshot is not treated as complete FEN; starting from the standard position, compact visual changes advance state only through one uniquely matching legal move. The project does not implement active chess-site polling, chess-site screen reading, or browser automation. Completed online games remain separate and may enter post-match analysis only through documented public endpoints after the game.
 
 ### Live session
 
@@ -78,7 +85,7 @@ The session is the single owner of the current board and move history. It valida
 
 ### Latest-position analysis
 
-Live analysis must not let old results overwrite newer recommendations. The coordinator will attach a monotonically increasing position revision to each request, cancel or disregard stale work, and publish a result only when its revision still matches the current session. Engine work remains explicitly bounded.
+Live analysis must not let old results overwrite newer recommendations. The desktop overlay now uses a single-worker coordinator that attaches a monotonically increasing position revision to each request, replaces pending stale work, disregards an in-flight stale result, and publishes only when the revision still matches. The overlay presentation performs a second revision/FEN check. Engine work remains explicitly bounded. The localhost game's bot request is still synchronous and remains a separate future background-coordination slice.
 
 ### Coaching and recording
 
@@ -112,7 +119,7 @@ Basic PGN recording now preserves moves, clock values, results, the top live rec
 
 ## Next implementation slices
 
-1. Move engine work behind a latest-position background coordinator so the bot request itself is not blocked and stale results cannot be published; preserve the implemented premove validation contract.
+1. Move the remaining localhost browser engine work behind background coordination so the bot request itself is not blocked; preserve the implemented premove validation contract. The desktop overlay already uses latest-position coordination.
 2. Add deep post-game analysis that recomputes played moves with a larger Stockfish budget and reports stable evaluation loss and critical moments.
 3. Expand deterministic coaching from basic tactical cues to score-change, threat, and positional explanations, including optional principal-variation overlays.
 4. Add a manual external-bot companion only for an explicitly permitted mode; keep it independent from website acquisition or control.

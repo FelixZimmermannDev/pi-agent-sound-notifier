@@ -51,7 +51,9 @@ Use a real local Stockfish executable selectively to verify UCI startup, one sma
 
 For the terminal, test a small number of complete CLI paths: valid FEN, invalid FEN, missing engine, and successful recommendation output. Prefer invoking the Python entry point without spawning a subprocess unless process behavior matters.
 
-For the localhost browser workflow, test clock and game coordination below HTTP first, then use Flask's test client for page, validated pre-game candidate/opponent/coach settings, start, separate player/bot moves, errors, and PGN-download routes. Protect the server contract that premove candidates never bypass final legal-move validation. A practical real-boundary smoke check should serve the packaged page on `127.0.0.1`, use real Stockfish for one complete turn, and shut both HTTP and engine resources down explicitly. Browser layout, native drag events, local premove queuing, and SVG overlays still require a short manual check because API tests do not execute browser interaction.
+For the localhost browser workflow, test clock and game coordination below HTTP first, then use Flask's test client for page, validated pre-game candidate/opponent/coach settings, optional no-web-coach mode, start, separate player/bot moves, errors, and PGN-download routes. Protect the server contract that premove candidates never bypass final legal-move validation. A practical real-boundary smoke check should serve the packaged page on `127.0.0.1`, use real Stockfish for one complete turn, and shut both HTTP and engine resources down explicitly. Browser layout, native drag events, local premove queuing, and SVG overlays still require a short manual check because API tests do not execute browser interaction.
+
+For the optional Windows desktop overlay, keep DXCAM, Qt desktop composition, recognition, legal reconciliation, background analysis, and rendering behind separate boundaries. Deterministically test stable observation, unique legal transitions, rejected uncertain/ambiguous observations with unchanged state, revision monotonicity, stale-analysis rejection, both board orientations, F8 state preservation, and worker/context cleanup. Test recognition against synthetic images and the same SVG piece source and board colors used by the included local website. A real Windows smoke path should use actual DXCAM behind a capture-excluded overlay and real bounded Stockfish, while browser placement remains manual because the product must not contain browser automation.
 
 ### Level 5: External data
 
@@ -68,7 +70,8 @@ Tests normally add value for:
 - provisional move-quality thresholds and per-color running accuracy;
 - explicit state changes in an interactive local session;
 - server-authoritative countdown, increment, timeout behavior, and exclusion of coach-only analysis overhead;
-- split player/bot API coordination, legal premove candidates, rejected-state preservation, and incremental annotated PGN recording;
+- split player/bot API coordination, legal premove candidates, rejected-state preservation, optional no-web-coach operation, and incremental annotated PGN recording;
+- desktop recognition stability and confidence, uniquely legal visual transitions, unchanged state after uncertain/ambiguous input, monotonic position revisions, stale background-result rejection, orientation-aware arrow geometry, visibility-state preservation, and guaranteed DXCAM/Stockfish worker cleanup;
 - SAN/UCI principal-variation preservation, phase classification, tactical relevance, and bounded forecast summaries;
 - engine startup, failure handling, limits, shutdown, and Elo-limited coach root selection rather than unrestricted analysis-PV leakage;
 - bug fixes and regressions.
@@ -95,6 +98,11 @@ From the repository root with the virtual environment activated:
 ```powershell
 # Deterministic default suite; real engine test is skipped.
 python -m pytest
+
+# Optional desktop-overlay deterministic suite.
+Push-Location side_projects\chess_overlay
+python -m pytest
+Pop-Location
 
 # Explicit real Stockfish boundary check.
 $env:RUN_STOCKFISH_INTEGRATION = "1"

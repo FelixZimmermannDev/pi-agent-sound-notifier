@@ -499,12 +499,13 @@ function renderEvaluationBar() {
 }
 
 function renderRecommendationSettings() {
+  const webCoachDisabled = !gameState.coaching_enabled;
   candidateCountButtons.forEach(button => {
     const count = Number(button.dataset.candidateCount);
     const isSelected = count === selectedRecommendationCount;
     button.classList.toggle("selected", isSelected);
     button.setAttribute("aria-pressed", isSelected ? "true" : "false");
-    button.disabled = gameState.started || requestInProgress;
+    button.disabled = webCoachDisabled || gameState.started || requestInProgress;
   });
   botEloSlider.value = selectedBotElo;
   botEloValue.textContent = `UCI-Ziel ${selectedBotElo}`;
@@ -512,19 +513,21 @@ function renderRecommendationSettings() {
 
   const coachUsesMaximum = selectedCoachElo == null;
   coachMaxStrength.checked = coachUsesMaximum;
-  coachMaxStrength.disabled = gameState.started || requestInProgress;
+  coachMaxStrength.disabled = webCoachDisabled || gameState.started || requestInProgress;
   coachEloSlider.value = limitedCoachElo;
   coachEloSlider.disabled = (
-    gameState.started || requestInProgress || coachUsesMaximum
+    webCoachDisabled || gameState.started || requestInProgress || coachUsesMaximum
   );
   coachEloValue.textContent = coachUsesMaximum
     ? "Maximal"
     : `UCI-Ziel ${selectedCoachElo}`;
 
   const equalBudgets = gameState.coach_time_ms === gameState.bot_time_ms;
-  engineBudgetNote.textContent = equalBudgets
-    ? `Gleiches Budget für die Hauptzugauswahl: Coach und Gegner jeweils ${gameState.coach_time_ms} ms. Weitere Kandidaten, Erklärungen und die objektive Balkenbewertung rechnen zusätzlich, ändern den gewählten Hauptzug aber nicht.`
-    : `Unterschiedliche Budgets für die Hauptzugauswahl: Coach ${gameState.coach_time_ms} ms, Gegner ${gameState.bot_time_ms} ms. Für direkte Vergleiche beim Start dieselben CLI-Zeiten verwenden.`;
+  engineBudgetNote.textContent = webCoachDisabled
+    ? "Web-Coaching ist deaktiviert. Empfehlungen kommen ausschließlich aus dem lokalen Desktop-Overlay."
+    : equalBudgets
+      ? `Gleiches Budget für die Hauptzugauswahl: Coach und Gegner jeweils ${gameState.coach_time_ms} ms. Weitere Kandidaten, Erklärungen und die objektive Balkenbewertung rechnen zusätzlich, ändern den gewählten Hauptzug aber nicht.`
+      : `Unterschiedliche Budgets für die Hauptzugauswahl: Coach ${gameState.coach_time_ms} ms, Gegner ${gameState.bot_time_ms} ms. Für direkte Vergleiche beim Start dieselben CLI-Zeiten verwenden.`;
 }
 
 function renderForecastControls() {
@@ -601,6 +604,12 @@ function renderRecommendations() {
   recommendationsElement.replaceChildren();
   const coachState = document.querySelector("#coach-state");
   const strengthLabel = selectedCoachElo == null ? "Max" : `UCI ${selectedCoachElo}`;
+  if (!gameState.coaching_enabled) {
+    coachState.textContent = "Desktop-Overlay";
+    coachState.className = "state-pill";
+    recommendationsElement.append(emptyMessage("Web-Empfehlungen sind deaktiviert. Das erlaubte lokale Desktop-Overlay übernimmt die Analyse."));
+    return;
+  }
   if (!gameState.started) {
     coachState.textContent = `${strengthLabel} · Wartet`;
     coachState.className = "state-pill";

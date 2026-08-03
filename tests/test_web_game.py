@@ -81,6 +81,7 @@ def settings(
     *,
     player_color: chess.Color = chess.WHITE,
     coach_elo: int | None = None,
+    coaching_enabled: bool = True,
 ) -> WebGameSettings:
     return WebGameSettings(
         player_color=player_color,
@@ -90,6 +91,7 @@ def settings(
         bot_time_seconds=0.05,
         candidate_count=2,
         initial_seconds=600,
+        coaching_enabled=coaching_enabled,
     )
 
 
@@ -151,6 +153,27 @@ def test_web_game_tracks_manual_player_move_bot_reply_and_live_advice(
     assert recorded_game.headers["White"] == "Player"
     assert "Live coach: e4" in recorded_game.next().comment
     assert "Provisional live quality: Bester Zug" in recorded_game.next().comment
+
+
+def test_web_game_can_run_without_web_coaching_for_desktop_overlay() -> None:
+    engine = DeterministicWebEngine()
+    game = LocalWebGame(
+        engine,
+        board=chess.Board(),
+        settings=settings(coaching_enabled=False),
+    )
+
+    started = game.start()
+    after_player_move = game.play_player_move("e4")
+    after_bot_move = game.play_bot_turn()
+
+    assert started.coaching_enabled is False
+    assert started.recommendation == ()
+    assert started.evaluation_bar is None
+    assert after_player_move.recommendation == ()
+    assert after_bot_move.recommendation == ()
+    assert engine.analysis_calls == []
+    assert engine.bot_calls != []
 
 
 def test_web_game_classifies_a_non_candidate_player_move_provisionally() -> None:
