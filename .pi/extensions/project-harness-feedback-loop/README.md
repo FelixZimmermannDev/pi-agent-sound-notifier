@@ -10,10 +10,13 @@ A minimal project-local Pi feedback loop for implementation tasks. It is not ins
 
 Use normal chat for explanation, investigation, or planning without requested file changes. A guarded task requires a clean Git worktree so its output diff is attributable to one request.
 
-The loop performs only two responsibilities:
+The read-only evaluator performs only three responsibilities:
 
-1. snapshot the original user request and original loaded requirements, then compare them with the resulting code and tests through an isolated read-only evaluator;
-2. when evidence shows an interface failure, suggest one optional project-local improvement to `prompts/interface.md` without applying it or changing canonical requirements.
+1. inspect the resulting output code and directly relevant tests;
+2. check whether the intended behavior and constraints from the original user request and original loaded requirements are faithfully reflected in that output;
+3. when they are not, give one concrete advisory correction targeting either the output or, only when the operational interface caused the mismatch, `prompts/interface.md`.
+
+Corrections are never applied automatically and canonical requirements are never rewritten.
 
 The normal coding agent remains responsible for implementation and applicable project tests. The controller does not run those tests a second time.
 

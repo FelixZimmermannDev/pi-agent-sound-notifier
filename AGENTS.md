@@ -44,7 +44,7 @@ Never claim that the application works solely because its architecture looks cor
 - The `Project Harness Feedback Loop` lives only under `.pi/extensions/project-harness-feedback-loop/` in this repository and is activated with `/guarded <implementation request>`.
 - Keep the global `C:\Users\Felix\.pi\agent\AGENTS.md`, global extensions, credentials, models, and settings unchanged.
 - A guarded task snapshots the original request and loaded requirements, lets the normal coding agent implement and verify the change, then uses an isolated read-only evaluator to compare those original inputs directly with the resulting code and tests.
-- Treat evaluator interface improvements as project-local proposals for `.pi/extensions/project-harness-feedback-loop/prompts/interface.md`. Do not automatically rewrite canonical requirements or apply evaluator proposals.
+- Treat evaluator corrections as advisory: output corrections target code or tests, while interface corrections target `.pi/extensions/project-harness-feedback-loop/prompts/interface.md`. Do not automatically rewrite canonical requirements or apply evaluator corrections.
 - Raw guarded-run evidence belongs under the ignored `output/project-harness-feedback-loop/` directory, not in durable context documents.
 
 ## Architecture and implementation standards

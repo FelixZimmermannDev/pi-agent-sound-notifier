@@ -13,7 +13,7 @@
     "docs/testing.md"
   ],
   "audit": {
-    "thinkingLevel": "low",
+    "thinkingLevel": "high",
     "timeoutSeconds": 180,
     "interfaceChanges": "proposal-only"
   },

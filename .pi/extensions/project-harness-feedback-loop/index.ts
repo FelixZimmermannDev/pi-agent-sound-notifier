@@ -272,9 +272,9 @@ export default function projectHarnessFeedbackLoop(pi: ExtensionAPI) {
       try {
         report = await evaluateTask(ctx.cwd, task);
       } catch (error) {
-        report = `Verdict: CHECKER\n\nRequirements check:\n- Independent evaluator failed: ${
+        report = `Verdict: CHECKER\n\nReflection check:\n- Independent evaluator failed: ${
           error instanceof Error ? error.message : String(error)
-        }\n\nInterface diagnosis:\n- No reliable diagnosis available.\n\nOptional interface improvement:\n- None`;
+        }\n\nCorrection:\n- None`;
       }
       await writeFile(join(task.runDirectory, "audit.md"), report, "utf8");
       activeTask = undefined;
