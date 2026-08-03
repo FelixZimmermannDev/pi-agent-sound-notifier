@@ -50,6 +50,7 @@ type ActiveTask = {
   startHead: string;
   config: HarnessConfig;
   taskCompilerPrompt: string;
+  input: Record<string, unknown>;
   contract?: TaskContract;
   mutationObserved: boolean;
   auditing: boolean;
@@ -344,6 +345,10 @@ export default function projectHarnessFeedbackLoop(pi: ExtensionAPI) {
     setContractToolActive(pi, false);
   });
 
+  pi.on("resources_discover", (event) => ({
+    promptPaths: [join(extensionDirectory(event.cwd), "commands")],
+  }));
+
   pi.on("tool_call", (event) => {
     if (!activeTask || activeTask.auditing) return;
     if (event.toolName !== "edit" && event.toolName !== "write") return;
@@ -358,6 +363,14 @@ export default function projectHarnessFeedbackLoop(pi: ExtensionAPI) {
 
   pi.on("before_agent_start", async (event) => {
     if (!activeTask || activeTask.auditing) return;
+    const contextFiles = (event.systemPromptOptions.contextFiles ?? []) as Array<{ path: string; content: string }>;
+    activeTask.input.requirementSources = await snapshotRequirements(
+      event.systemPromptOptions.cwd,
+      activeTask.config,
+      contextFiles,
+      activeTask.runDirectory,
+    );
+    await writeFile(join(activeTask.runDirectory, "input.json"), JSON.stringify(activeTask.input, null, 2), "utf8");
     const requirementList = activeTask.config.requirementFiles.map((path) => `- ${path}`).join("\n");
     const addition = [
       activeTask.taskCompilerPrompt,
@@ -428,75 +441,72 @@ export default function projectHarnessFeedbackLoop(pi: ExtensionAPI) {
     setContractToolActive(pi, false);
   });
 
-  pi.registerCommand("guarded", {
-    description: "Run one implementation task through the project-local harness feedback loop",
-    handler: async (args, ctx) => {
-      const userPrompt = args.trim();
-      if (!userPrompt) {
-        ctx.ui.notify("Usage: /guarded <implementation request>", "warning");
-        return;
-      }
-      if (!ctx.isIdle()) {
-        ctx.ui.notify("Wait for the current agent run to settle before starting /guarded.", "warning");
-        return;
-      }
-      if (activeTask) {
-        ctx.ui.notify(`Guarded task ${activeTask.id} is already active.`, "warning");
-        return;
-      }
-      if (!ctx.isProjectTrusted()) {
-        ctx.ui.notify("The project-local harness requires this repository to be trusted by Pi.", "error");
-        return;
-      }
+  pi.on("input", async (event, ctx) => {
+    const match = event.text.match(/^\/guarded(?:\s+([\s\S]*))?$/);
+    if (!match) return { action: "continue" };
 
-      try {
-        const config = await loadConfig(ctx.cwd);
-        await verifyProject(pi, ctx.cwd, config);
-        const startHeadResult = await pi.exec("git", ["rev-parse", "HEAD"], { timeout: 10000 });
-        if (startHeadResult.code !== 0) throw new Error("Could not capture the starting Git revision.");
+    const userPrompt = (match[1] ?? "").trim();
+    if (!userPrompt) {
+      ctx.ui.notify("Usage: /guarded <implementation request>", "warning");
+      return { action: "handled" };
+    }
+    if (!ctx.isIdle()) {
+      ctx.ui.notify("Wait for the current agent run to settle before starting /guarded.", "warning");
+      return { action: "handled" };
+    }
+    if (activeTask) {
+      ctx.ui.notify(`Guarded task ${activeTask.id} is already active.`, "warning");
+      return { action: "handled" };
+    }
+    if (!ctx.isProjectTrusted()) {
+      ctx.ui.notify("The project-local harness requires this repository to be trusted by Pi.", "error");
+      return { action: "handled" };
+    }
 
-        const id = createRunId();
-        const runDirectory = join(ctx.cwd, "output", "project-harness-feedback-loop", "runs", id);
-        await mkdir(runDirectory, { recursive: true });
-        const taskCompilerPrompt = await readFile(join(extensionDirectory(ctx.cwd), "prompts", "task-compiler.md"), "utf8");
-        const systemOptions = ctx.getSystemPromptOptions();
-        const contextFiles = (systemOptions.contextFiles ?? []) as Array<{ path: string; content: string }>;
-        const requirementSources = await snapshotRequirements(ctx.cwd, config, contextFiles, runDirectory);
+    try {
+      const config = await loadConfig(ctx.cwd);
+      await verifyProject(pi, ctx.cwd, config);
+      const startHeadResult = await pi.exec("git", ["rev-parse", "HEAD"], { timeout: 10000 });
+      if (startHeadResult.code !== 0) throw new Error("Could not capture the starting Git revision.");
 
-        const input = {
-          schemaVersion: 1,
-          taskId: id,
-          projectId: config.projectId,
-          originalUserPrompt: userPrompt,
-          startedAt: new Date().toISOString(),
-          startHead: startHeadResult.stdout.trim(),
-          model: ctx.model ? { provider: ctx.model.provider, id: ctx.model.id } : null,
-          thinkingLevel: ctx.thinkingLevel,
-          requirementSources,
-          correctionPolicy: config.audit.interfaceChanges,
-        };
-        await writeFile(join(runDirectory, "input.json"), JSON.stringify(input, null, 2), "utf8");
+      const id = createRunId();
+      const runDirectory = join(ctx.cwd, "output", "project-harness-feedback-loop", "runs", id);
+      await mkdir(runDirectory, { recursive: true });
+      const taskCompilerPrompt = await readFile(join(extensionDirectory(ctx.cwd), "prompts", "task-compiler.md"), "utf8");
+      const input: Record<string, unknown> = {
+        schemaVersion: 1,
+        taskId: id,
+        projectId: config.projectId,
+        originalUserPrompt: userPrompt,
+        startedAt: new Date().toISOString(),
+        startHead: startHeadResult.stdout.trim(),
+        model: ctx.model ? { provider: ctx.model.provider, id: ctx.model.id } : null,
+        thinkingLevel: ctx.thinkingLevel,
+        requirementSources: [],
+        correctionPolicy: config.audit.interfaceChanges,
+      };
+      await writeFile(join(runDirectory, "input.json"), JSON.stringify(input, null, 2), "utf8");
 
-        activeTask = {
-          id,
-          userPrompt,
-          runDirectory,
-          runDirectoryRelative: relative(ctx.cwd, runDirectory),
-          startHead: startHeadResult.stdout.trim(),
-          config,
-          taskCompilerPrompt,
-          mutationObserved: false,
-          auditing: false,
-        };
-        setContractToolActive(pi, true);
-        ctx.ui.notify(`Started guarded task ${id}.`, "info");
-        pi.sendUserMessage(userPrompt);
-        await ctx.waitForIdle();
-      } catch (error) {
-        activeTask = undefined;
-        setContractToolActive(pi, false);
-        ctx.ui.notify(error instanceof Error ? error.message : String(error), "error");
-      }
-    },
+      activeTask = {
+        id,
+        userPrompt,
+        runDirectory,
+        runDirectoryRelative: relative(ctx.cwd, runDirectory),
+        startHead: startHeadResult.stdout.trim(),
+        config,
+        taskCompilerPrompt,
+        input,
+        mutationObserved: false,
+        auditing: false,
+      };
+      setContractToolActive(pi, true);
+      ctx.ui.notify(`Started guarded task ${id}.`, "info");
+      return { action: "transform", text: userPrompt };
+    } catch (error) {
+      activeTask = undefined;
+      setContractToolActive(pi, false);
+      ctx.ui.notify(error instanceof Error ? error.message : String(error), "error");
+      return { action: "handled" };
+    }
   });
 }

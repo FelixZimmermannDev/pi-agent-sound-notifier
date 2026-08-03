@@ -1,3 +1,3 @@
 # Translation evals
 
-Add a regression case here only after a `HARNESS` finding is confirmed. Each case should contain the representative user request, applicable requirement IDs, and contract elements that must be present. Run the full set whenever `../prompts/task-compiler.md` changes.
+Add a regression case here after a `HARNESS` finding or confirmed controller-interface failure. Each case should contain the representative input, original gap, required behavior, and regression evidence. Run translation cases whenever `../prompts/task-compiler.md` changes and controller cases whenever guarded dispatch changes.

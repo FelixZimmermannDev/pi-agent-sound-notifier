@@ -30,7 +30,8 @@ The evaluator never edits files. In this first version, a harness improvement is
 
 ## Project-local components
 
-- `.pi/extensions/project-harness-feedback-loop/index.ts` — executable project-local Pi controller
+- `.pi/extensions/project-harness-feedback-loop/index.ts` — executable project-local Pi controller and `/guarded` input interception
+- `.pi/extensions/project-harness-feedback-loop/commands/guarded.md` — slash-command discovery metadata for Pi autocomplete
 - `.pi/extensions/project-harness-feedback-loop/core.mjs` — deterministic parsing and report formatting
 - `.pi/extensions/project-harness-feedback-loop/config.json` — project marker, requirement paths, checks, limits, and audit settings
 - `.pi/extensions/project-harness-feedback-loop/prompts/task-compiler.md` — interface that makes the coding agent record an explicit task contract
