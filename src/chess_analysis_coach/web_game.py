@@ -20,7 +20,7 @@ from chess_analysis_coach.evaluation import (
     terminal_evaluation,
 )
 from chess_analysis_coach.game_clock import ChessClock
-from chess_analysis_coach.models import Recommendation
+from chess_analysis_coach.models import Evaluation, Recommendation
 from chess_analysis_coach.move_quality import MoveQuality, assess_move
 from chess_analysis_coach.presentation import format_evaluation
 from chess_analysis_coach.recording import (
@@ -183,6 +183,7 @@ class LocalWebGame:
         self._timeout_color: chess.Color | None = None
         self._recommendation: Recommendation | None = None
         self._pending_bot_recommendation: Recommendation | None = None
+        self._position_evaluation: Evaluation | None = None
         self._moves: list[RecordedMove] = []
         self._move_assessments: list[AssessedMoveView | None] = []
         self._recording_path = (
@@ -454,13 +455,26 @@ class LocalWebGame:
         self._clock.start(board_after.turn)
 
     def _analyze_current_position(self) -> Recommendation:
-        return recommend_moves(
-            self._session.snapshot(),
+        board = self._session.snapshot()
+        recommendation = recommend_moves(
+            board,
             self._engine,
             time_limit_seconds=self._settings.coach_time_seconds,
             candidate_count=self._settings.candidate_count,
             strength_elo=self._settings.coach_elo,
         )
+        if self._settings.coach_elo is None:
+            self._position_evaluation = recommendation.candidates[0].evaluation
+        else:
+            objective = recommend_moves(
+                board,
+                self._engine,
+                time_limit_seconds=self._settings.coach_time_seconds,
+                candidate_count=1,
+                strength_elo=None,
+            )
+            self._position_evaluation = objective.candidates[0].evaluation
+        return recommendation
 
     def _possible_premoves(self, board: chess.Board) -> tuple[str, ...]:
         premove_board = board.copy(stack=False)
@@ -477,11 +491,10 @@ class LocalWebGame:
         outcome = board.outcome(claim_draw=True)
         if outcome is not None:
             return terminal_evaluation(outcome.winner)
-        recommendation = self._recommendation or self._pending_bot_recommendation
-        if recommendation is None or not recommendation.candidates:
+        if self._position_evaluation is None:
             return None
         return summarize_evaluation(
-            recommendation.candidates[0].evaluation,
+            self._position_evaluation,
             side_to_move=board.turn,
         )
 

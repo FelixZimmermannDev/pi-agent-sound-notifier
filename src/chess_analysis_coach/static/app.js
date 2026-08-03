@@ -45,6 +45,9 @@ let dragSourceSquare = null;
 let requestInProgress = false;
 let botMoveInProgress = false;
 let stateReceivedAt = performance.now();
+let displayedEvaluationWhitePercent = null;
+
+const evaluationBarDeadband = 2.0;
 
 async function requestJson(url, options = {}) {
   const response = await fetch(url, {
@@ -463,8 +466,18 @@ function renderPlayers() {
 function renderEvaluationBar() {
   const summary = gameState.evaluation_bar;
   const whiteAtTop = gameState.player_color === "black";
-  const whitePercent = summary?.white_percent ?? 50;
-  const blackPercent = summary?.black_percent ?? 50;
+  const targetWhitePercent = summary?.white_percent ?? 50;
+  const forceTarget = gameState.game_over || summary?.display.includes("#");
+  if (
+    displayedEvaluationWhitePercent == null
+    || summary == null
+    || forceTarget
+    || Math.abs(targetWhitePercent - displayedEvaluationWhitePercent) >= evaluationBarDeadband
+  ) {
+    displayedEvaluationWhitePercent = targetWhitePercent;
+  }
+  const whitePercent = displayedEvaluationWhitePercent;
+  const blackPercent = 100 - whitePercent;
   const splitFromTop = whiteAtTop ? whitePercent : blackPercent;
   const topLabel = document.querySelector("#evaluation-top-label");
   const bottomLabel = document.querySelector("#evaluation-bottom-label");
@@ -480,7 +493,7 @@ function renderEvaluationBar() {
   bottomLabel.style.color = whiteAtTop ? "#f1f1e9" : "#282923";
 
   const description = summary
-    ? `Live-Bewertung ${summary.display}; Weiß ${whitePercent.toFixed(0)} Prozent, Schwarz ${blackPercent.toFixed(0)} Prozent.`
+    ? `Live-Bewertung ${summary.display}; geglättete Anzeige Weiß ${whitePercent.toFixed(0)} Prozent, Schwarz ${blackPercent.toFixed(0)} Prozent.`
     : "Noch keine Live-Bewertung";
   evaluationBarElement.setAttribute("aria-label", description);
 }
@@ -510,7 +523,7 @@ function renderRecommendationSettings() {
 
   const equalBudgets = gameState.coach_time_ms === gameState.bot_time_ms;
   engineBudgetNote.textContent = equalBudgets
-    ? `Gleiches Budget für die Hauptzugauswahl: Coach und Gegner jeweils ${gameState.coach_time_ms} ms. Weitere Coach-Kandidaten und ihre Erklärungen rechnen zusätzlich, ändern den gewählten Hauptzug aber nicht.`
+    ? `Gleiches Budget für die Hauptzugauswahl: Coach und Gegner jeweils ${gameState.coach_time_ms} ms. Weitere Kandidaten, Erklärungen und die objektive Balkenbewertung rechnen zusätzlich, ändern den gewählten Hauptzug aber nicht.`
     : `Unterschiedliche Budgets für die Hauptzugauswahl: Coach ${gameState.coach_time_ms} ms, Gegner ${gameState.bot_time_ms} ms. Für direkte Vergleiche beim Start dieselben CLI-Zeiten verwenden.`;
 }
 

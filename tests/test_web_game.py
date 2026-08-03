@@ -11,7 +11,8 @@ from chess_analysis_coach.web_game import LocalWebGame, WebGameSettings
 
 
 class DeterministicWebEngine:
-    def __init__(self) -> None:
+    def __init__(self, *, limited_evaluation_centipawns: int | None = None) -> None:
+        self.limited_evaluation_centipawns = limited_evaluation_centipawns
         self.analysis_calls: list[str] = []
         self.analysis_strengths: list[int | None] = []
         self.bot_calls: list[str] = []
@@ -46,7 +47,14 @@ class DeterministicWebEngine:
                 CandidateMove(
                     san=san,
                     uci=move.uci(),
-                    evaluation=Evaluation(centipawns=30 - rank * 5),
+                    evaluation=Evaluation(
+                        centipawns=(
+                            self.limited_evaluation_centipawns
+                            if strength_elo is not None
+                            and self.limited_evaluation_centipawns is not None
+                            else 30 - rank * 5
+                        )
+                    ),
                     principal_variation_san=(san,),
                     principal_variation_uci=(move.uci(),),
                 )
@@ -176,7 +184,24 @@ def test_web_game_applies_pre_game_recommendation_count() -> None:
     game.play_player_move("e4")
     game.play_bot_turn()
     assert engine.bot_elos == [1800]
-    assert engine.analysis_strengths == [1900, 1900, 1900]
+    assert engine.analysis_strengths == [1900, None, 1900, None, 1900, None]
+
+
+def test_evaluation_bar_uses_objective_analysis_with_limited_coach() -> None:
+    engine = DeterministicWebEngine(limited_evaluation_centipawns=-400)
+    game = LocalWebGame(
+        engine,
+        board=chess.Board(),
+        settings=settings(coach_elo=1400),
+    )
+
+    state = game.start()
+
+    assert state.recommendation[0].evaluation == "-4.00"
+    assert state.evaluation_bar is not None
+    assert state.evaluation_bar.display == "+0.25"
+    assert state.evaluation_bar.white_percent > 50
+    assert engine.analysis_strengths == [1400, None]
 
 
 def test_web_game_can_restore_full_strength_coach_before_start() -> None:

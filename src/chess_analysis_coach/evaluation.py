@@ -7,7 +7,9 @@ import chess
 
 from chess_analysis_coach.models import Evaluation
 
-_CENTIPAWN_BAR_SCALE = 250
+# Open win-chance curve published by lichess/scalachess; not a Chess.com formula.
+# https://github.com/lichess-org/scalachess/blob/master/core/src/main/scala/eval.scala
+_WIN_CHANCE_MULTIPLIER = 0.00368208
 _MIN_NON_MATE_PERCENT = 2.0
 _MAX_NON_MATE_PERCENT = 98.0
 
@@ -45,8 +47,9 @@ def summarize_evaluation(
 
     assert evaluation.centipawns is not None
     white_centipawns = evaluation.centipawns * perspective_sign
-    white_percent = 50.0 + (100.0 / math.pi) * math.atan(
-        white_centipawns / _CENTIPAWN_BAR_SCALE
+    bounded_centipawns = min(1000, max(-1000, white_centipawns))
+    white_percent = 100.0 / (
+        1.0 + math.exp(-_WIN_CHANCE_MULTIPLIER * bounded_centipawns)
     )
     white_percent = min(
         _MAX_NON_MATE_PERCENT,

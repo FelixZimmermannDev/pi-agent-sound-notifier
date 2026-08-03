@@ -64,7 +64,7 @@ Tests normally add value for:
 - FEN and move validation behavior;
 - legal-move and recommendation transformation, including pre-game candidate-count and independent opponent/coach strength validation;
 - evaluation and mate-score presentation rules;
-- fixed White-perspective normalization and evaluation-bar mapping;
+- fixed White-perspective normalization, conservative evaluation-bar mapping, and objective bar evaluation independent of limited coach strength;
 - provisional move-quality thresholds and per-color running accuracy;
 - explicit state changes in an interactive local session;
 - server-authoritative countdown, increment, timeout behavior, and exclusion of coach-only analysis overhead;
