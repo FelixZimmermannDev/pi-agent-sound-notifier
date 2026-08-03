@@ -67,6 +67,8 @@ def test_local_web_api_serves_page_and_one_complete_turn() -> None:
     assert 'id="future-arrowhead-response"' in page.get_data(as_text=True)
     assert 'id="evaluation-bar"' in page.get_data(as_text=True)
     assert 'data-candidate-count="1"' in page.get_data(as_text=True)
+    assert 'data-forecast-side="opponent"' in page.get_data(as_text=True)
+    assert 'data-forecast-mode="relevant"' in page.get_data(as_text=True)
 
     stylesheet = client.get("/static/app.css")
     assert stylesheet.status_code == 200

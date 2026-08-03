@@ -751,6 +751,52 @@ button:disabled {
   line-height: 1.4;
 }
 
+.forecast-controls {
+  display: grid;
+  gap: 7px;
+  margin-bottom: 12px;
+}
+
+.forecast-controls > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.forecast-controls > div > span {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.forecast-mode-buttons {
+  display: flex;
+  overflow: hidden;
+  border: 1px solid #525049;
+  border-radius: 6px;
+}
+
+.forecast-mode-buttons button {
+  min-height: 29px;
+  border: 0;
+  border-right: 1px solid #525049;
+  background: #292a25;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 750;
+  padding: 5px 8px;
+  cursor: pointer;
+}
+
+.forecast-mode-buttons button:last-child {
+  border-right: 0;
+}
+
+.forecast-mode-buttons button.selected {
+  background: #55584f;
+  color: #f2f3ec;
+}
+
 .recommendations {
   display: grid;
   gap: 9px;
@@ -819,10 +865,40 @@ button:disabled {
   line-height: 1.45;
 }
 
+.forecast-context {
+  display: inline-flex;
+  margin: 8px 0 0;
+  border: 1px solid #55574f;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 3%);
+  color: #b8bcb0;
+  font-size: 0.65rem;
+  font-weight: 750;
+  padding: 3px 7px;
+}
+
 .plan {
   border-left: 2px solid rgb(172 214 106 / 54%);
   color: #d9ddcf;
   padding-left: 8px;
+}
+
+.forecast-detail {
+  margin: 7px 0 0;
+  border-radius: 5px;
+  background: rgb(255 255 255 / 3%);
+  color: #bec3b7;
+  font-size: 0.76rem;
+  line-height: 1.4;
+  padding: 7px 8px;
+}
+
+.forecast-detail.counter {
+  border-left: 2px solid #e0a55b;
+}
+
+.forecast-detail.own {
+  border-left: 2px solid #69bce8;
 }
 
 .variation {

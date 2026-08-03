@@ -21,11 +21,16 @@ const evaluationScoreElement = document.querySelector("#evaluation-score");
 const candidateCountButtons = Array.from(
   document.querySelectorAll("[data-candidate-count]"),
 );
+const forecastModeButtons = Array.from(
+  document.querySelectorAll("[data-forecast-mode]"),
+);
 
 let gameState = null;
 let selectedSquare = null;
 let selectedCandidateUci = null;
 let selectedRecommendationCount = 1;
+let opponentForecastMode = "relevant";
+let ownForecastMode = "relevant";
 let queuedPremoveUci = null;
 let dragSourceSquare = null;
 let requestInProgress = false;
@@ -75,6 +80,7 @@ function render() {
   renderEvaluationBar();
   renderStatus();
   renderRecommendationSettings();
+  renderForecastControls();
   renderMoveQuality();
   renderRecommendations();
   renderMoves();
@@ -199,9 +205,14 @@ function renderFutureArrows(candidate, whiteOrientation) {
   const rankStyle = Math.min(candidate.rank, 3);
   candidate.variation_uci.slice(1, 3).forEach((move, index) => {
     const plyNumber = index + 2;
+    const isOpponentReply = plyNumber % 2 === 0;
+    const shouldShow = isOpponentReply
+      ? shouldShowForecast(opponentForecastMode, candidate.forecast.opponent_relevant)
+      : shouldShowForecast(ownForecastMode, candidate.forecast.own_follow_up_relevant);
+    if (!shouldShow) return;
+
     const endpoints = arrowEndpoints(move, whiteOrientation);
     const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-    const isOpponentReply = plyNumber % 2 === 0;
     line.classList.add(
       "future-arrow",
       isOpponentReply ? "response" : "own",
@@ -232,6 +243,10 @@ function renderFutureArrows(candidate, whiteOrientation) {
     number.textContent = plyNumber;
     candidateArrowsElement.append(circle, number);
   });
+}
+
+function shouldShowForecast(mode, isRelevant) {
+  return mode === "all" || (mode === "relevant" && isRelevant);
 }
 
 function arrowEndpoints(move, whiteOrientation) {
@@ -467,6 +482,17 @@ function renderRecommendationSettings() {
   });
 }
 
+function renderForecastControls() {
+  forecastModeButtons.forEach(button => {
+    const selectedMode = button.dataset.forecastSide === "opponent"
+      ? opponentForecastMode
+      : ownForecastMode;
+    const isSelected = button.dataset.forecastMode === selectedMode;
+    button.classList.toggle("selected", isSelected);
+    button.setAttribute("aria-pressed", isSelected ? "true" : "false");
+  });
+}
+
 function renderMoveQuality() {
   const running = gameState.running_accuracy;
   document.querySelector("#white-accuracy").textContent = formatAccuracy(
@@ -580,13 +606,47 @@ function renderRecommendations() {
     const explanation = document.createElement("p");
     explanation.className = "explanation";
     explanation.textContent = candidate.explanation;
+    const context = document.createElement("span");
+    context.className = "forecast-context";
+    context.textContent = candidate.forecast.context_label;
     const plan = document.createElement("p");
     plan.className = "plan";
-    plan.textContent = candidate.plan;
+    plan.textContent = `Ziel: ${candidate.forecast.goal}.`;
+
+    const showOpponent = Boolean(candidate.forecast.opponent_reply_san) &&
+      shouldShowForecast(
+        opponentForecastMode,
+        candidate.forecast.opponent_relevant,
+      );
+    const showOwn = Boolean(candidate.forecast.own_follow_up_san) &&
+      shouldShowForecast(
+        ownForecastMode,
+        candidate.forecast.own_follow_up_relevant,
+      );
+    const forecastDetails = [];
+    if (showOpponent) {
+      const counter = document.createElement("p");
+      counter.className = "forecast-detail counter";
+      counter.textContent = `Gegner-Counter: ${candidate.forecast.opponent_counter}.`;
+      forecastDetails.push(counter);
+    }
+    if (showOwn) {
+      const own = document.createElement("p");
+      own.className = "forecast-detail own";
+      own.textContent = `Eigene Fortsetzung: ${candidate.forecast.own_follow_up_goal}.`;
+      forecastDetails.push(own);
+    }
+
+    const variationMoves = [candidate.variation[0] || candidate.san];
+    if (showOpponent && candidate.variation[1]) variationMoves.push(candidate.variation[1]);
+    if (showOwn && candidate.variation[2]) {
+      if (!showOpponent) variationMoves.push("…");
+      variationMoves.push(candidate.variation[2]);
+    }
     const variation = document.createElement("p");
     variation.className = "variation";
-    variation.textContent = `Variante: ${candidate.variation.join(" ")}`;
-    card.append(topLine, explanation, plan, variation);
+    variation.textContent = `Sichtbare Variante: ${variationMoves.join(" ")}`;
+    card.append(topLine, explanation, context, plan, ...forecastDetails, variation);
     recommendationsElement.append(card);
   });
 }
@@ -687,6 +747,19 @@ function hideError() {
   errorMessage.hidden = true;
   errorMessage.textContent = "";
 }
+
+forecastModeButtons.forEach(button => {
+  button.addEventListener("click", () => {
+    if (button.dataset.forecastSide === "opponent") {
+      opponentForecastMode = button.dataset.forecastMode;
+    } else {
+      ownForecastMode = button.dataset.forecastMode;
+    }
+    renderForecastControls();
+    renderBoard();
+    renderRecommendations();
+  });
+});
 
 candidateCountButtons.forEach(button => {
   button.addEventListener("click", () => {

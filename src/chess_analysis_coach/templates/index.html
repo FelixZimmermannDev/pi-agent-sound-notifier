@@ -125,6 +125,24 @@
           </div>
           <span id="coach-state" class="state-pill">Wartet</span>
         </div>
+        <div class="forecast-controls" aria-label="Prognose-Anzeige">
+          <div>
+            <span>Gegner-Counter</span>
+            <div class="forecast-mode-buttons" role="group" aria-label="Gegnerische Prognose">
+              <button type="button" data-forecast-side="opponent" data-forecast-mode="off">Aus</button>
+              <button type="button" data-forecast-side="opponent" data-forecast-mode="relevant" class="selected">Wichtig</button>
+              <button type="button" data-forecast-side="opponent" data-forecast-mode="all">Alle</button>
+            </div>
+          </div>
+          <div>
+            <span>Eigene Fortsetzung</span>
+            <div class="forecast-mode-buttons" role="group" aria-label="Eigene Prognose">
+              <button type="button" data-forecast-side="own" data-forecast-mode="off">Aus</button>
+              <button type="button" data-forecast-side="own" data-forecast-mode="relevant" class="selected">Wichtig</button>
+              <button type="button" data-forecast-side="own" data-forecast-mode="all">Alle</button>
+            </div>
+          </div>
+        </div>
         <div id="recommendations" class="recommendations">
           <p class="empty-state">Nach dem Start erscheinen hier Stockfish-Kandidaten und taktische Hinweise.</p>
         </div>
