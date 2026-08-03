@@ -12,11 +12,14 @@ FEN → validation → bounded Stockfish MultiPV → ranked recommendations
 terminal game → recommendation → player SAN/UCI move → local Stockfish reply
 
 localhost browser game → clickable board + two chess clocks
-                       → recommendations only for the player's turn
+                       → live evaluation bar + selectable MultiPV arrows
+                       → provisional move quality + running accuracy
                        → local Stockfish reply + move list + PGN snapshot
 ```
 
-The browser prototype is served only on `127.0.0.1`. It never plays the player's recommended move: the player selects and submits every own move, while Stockfish controls only the local opponent. Candidate cards include evaluations, principal variations, and small deterministic tactical cues. Every played move, clock value, and current result is recorded as PGN under `output/games` and can also be downloaded in the browser.
+The browser prototype is served only on `127.0.0.1`. It never plays the player's recommended move: the player selects and submits every own move, while Stockfish controls only the local opponent. A fixed White-perspective evaluation bar updates after every completed turn. Candidate cards include evaluations, principal variations, deterministic tactical cues, and selectable color-matched arrows on the board.
+
+After each move, a second bounded evaluation—or the terminal result—estimates normalized evaluation-share loss. This produces a clearly labeled **provisional** move category and running accuracy for both colors. It is an original transparent prototype metric, not Chess.com's proprietary Accuracy. Every played move, clock value, live recommendation, provisional quality, and current result is recorded as PGN under `output/games` and can also be downloaded in the browser.
 
 Stockfish 18 was discovered from the local winget installation and verified with real bounded analysis and local play. Deterministic tests cover position and move errors, state ownership, clock behavior, PGN recording, browser API coordination, analysis, Elo configuration, Stockfish-output transformation, cleanup, presentation, and CLI behavior. A separate opt-in test exercises the real executable.
 
@@ -130,9 +133,13 @@ Example with a five-minute clock and three-second increment:
   --increment-seconds 3
 ```
 
-The application binds to `http://127.0.0.1:8765`. Use `--no-browser` to suppress automatic browser opening or `--port 9000` to select another local port. Click **Partie starten**, then select a piece and its destination square. PGN snapshots are written after every move to `output/games`; this generated directory is ignored by Git.
+The application binds to `http://127.0.0.1:8765`. Use `--no-browser` to suppress automatic browser opening or `--port 9000` to select another local port. Click **Partie starten**, then select a piece and its destination square. The evaluation bar always treats positive values as a White advantage, independent of whose turn it is. Up to three root arrows are shown by default; selecting a recommendation card emphasizes its matching arrow.
 
-This first graphical slice remains synchronous: a move request waits briefly for the bounded bot move and new coaching analysis. Deep post-game mistake classification is not implemented yet.
+PGN snapshots are written after every move to `output/games`; this generated directory is ignored by Git. Coach-only analysis is performed while both game clocks are paused, so application overhead is not charged to either side. The browser request itself remains synchronous and waits briefly for quality analysis, the bounded bot move, and the next recommendation. Deep post-game reclassification is not implemented yet.
+
+### Provisional live quality
+
+The live metric converts centipawn evaluation to a bounded evaluation share and compares that share before and after a move. Playing the first Stockfish candidate is marked **Bester Zug**. Other moves are classified by share loss: up to 1 point **Sehr gut**, 3 **Gut**, 7 **Ungenauigkeit**, 15 **Fehler**, and above 15 **Patzer**. Per-move accuracy is `max(0, 100 - 2.5 × loss)` and the displayed running value is the arithmetic mean for that color. Deeper post-game analysis will later recompute these values with a larger budget.
 
 ## Verification
 
@@ -153,9 +160,9 @@ python -m pytest tests/test_stockfish_integration.py
 
 1. **Bounded position analysis** — implemented and real-engine verified.
 2. **Synchronous interactive terminal game** — implemented with legal move input, undo, game termination, live recommendations, and selectable bot/coach Elo.
-3. **Clocked localhost browser game** — implemented with a clickable board, recommendations for the player's side, local opponent moves, two countdown clocks, move history, and incremental PGN recording.
-4. **Deep post-game analysis** — compare each played move with deeper Stockfish analysis and identify inaccuracies, mistakes, blunders, and critical moments.
-5. **Low-latency live pipeline** — move analysis into the background, cancel stale work, and publish only the newest position's result.
+3. **Clocked localhost browser game** — implemented with a clickable board, live evaluation bar, selectable MultiPV arrows, provisional move quality and accuracy, local opponent moves, two countdown clocks, move history, and incremental PGN recording.
+4. **Low-latency live pipeline** — move analysis into the background, cancel stale work, and publish only the newest position's result.
+5. **Deep post-game analysis** — recompute each played move with a larger Stockfish budget and identify stable inaccuracies, mistakes, blunders, and critical moments.
 6. **Richer coaching explanations** — expand the first tactical cues into concise tactical and positional learning notes.
 7. **External bot companion mode** — accept manually entered moves from an explicitly permitted external bot game without reading or controlling a website.
 8. **Bachelor-thesis evaluation** — measure latency, recommendation stability, explanation usefulness, and agreement with deeper post-match analysis.

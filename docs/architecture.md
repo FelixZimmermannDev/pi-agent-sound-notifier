@@ -17,23 +17,27 @@ Quoted FEN → validation → defensive board copy → bounded Stockfish MultiPV
 Terminal session → recommendation → player SAN/UCI move
                  → Elo-limited local bot move → repeat
 
-Local browser → start clock → player click move → server validation
-              → Elo-limited local bot move → player-only recommendation
-              → browser state + incremental PGN snapshot
+Local browser → player-only MultiPV recommendation + fixed evaluation bar
+              → player click move → provisional bounded quality comparison
+              → Elo-limited local bot move → next recommendation
+              → browser state + incremental annotated PGN snapshot
 ```
 
 - `chess_analysis_coach.cli` owns the `analyze`, `play`, and `web` commands, Stockfish path discovery, process lifetime, terminal output, and exit codes.
 - `python-chess` owns chess rules, FEN, SAN/UCI conversion, score handling, game outcomes, and UCI communication.
 - `LocalGameSession` is the single owner of interactive board state. It applies legal player/bot moves, increments a monotonic revision, supports bounded undo, and exposes defensive snapshots.
 - The synchronous terminal prototype requests one recommendation for each new position revision and never reanalyzes unchanged state after informational commands or rejected moves.
-- `LocalWebGame` coordinates one browser game without putting chess rules into HTTP routes or JavaScript. It accepts only player-selected legal moves, invokes Stockfish only for the opponent, and publishes recommendations only on the player's turn.
-- `ChessClock` is the server-side authority for both countdowns and increment. Browser countdown animation is presentation only; polling reconciles it with server time.
+- `LocalWebGame` coordinates one browser game without putting chess rules into HTTP routes or JavaScript. It accepts only player-selected legal moves, invokes Stockfish for the local opponent, and publishes recommendations only on the player's turn.
+- The browser presents the top MultiPV candidates as selectable color-matched root arrows. Arrow selection is presentation state and never applies a move.
+- The evaluation bar normalizes the top candidate to a fixed White perspective. A bounded arctangent mapping converts centipawns to a visual share; mate and terminal results pin the bar to the winning side.
+- After a move, a second bounded position evaluation estimates normalized evaluation-share loss. Transparent thresholds produce a provisional category and per-color running mean. This metric is intentionally not called or treated as Chess.com's proprietary Accuracy.
+- `ChessClock` is the server-side authority for both countdowns and increment. Browser countdown animation is presentation only; polling reconciles it with server time. Coach-only evaluation runs while both game clocks are stopped, so application overhead is not charged to either side.
 - The Flask adapter binds only to `127.0.0.1`. It serves a packaged HTML/CSS/JavaScript board and a narrow JSON API; it is not a public web application.
 - Browser games are incrementally written as PGN snapshots under the ignored `output/games` directory. Player moves include the current top live recommendation as a PGN comment, and the same PGN can be downloaded through the local UI.
 - The Stockfish adapter starts the external process only when entering its context and guarantees a shutdown attempt on every exit path.
 - Analysis and bot work use separate explicit time limits. Current CLI defaults are 250 ms and three candidates.
 - Stockfish opponent strength is selectable through its supported `UCI_Elo` range of 1320–3190. Coaching is full strength by default and can be limited independently.
-- Candidate scores are normalized to the side-to-move perspective and include a short principal variation.
+- Candidate cards use the side-to-move perspective and include a short principal variation; the live bar separately uses a fixed White perspective so it does not reverse meaning after every move.
 - Application coordination analyzes a defensive board copy, including move history, and does not mutate caller-owned state.
 - Expected position, move, session, and engine failures produce actionable user-facing messages.
 - Deterministic automated tests cover the implemented boundaries. Stockfish 18 installed through winget has also passed bounded analysis and local-play smoke verification.
@@ -75,9 +79,9 @@ Live analysis must not let old results overwrite newer recommendations. The coor
 
 ### Coaching and recording
 
-Engine scores and principal variations are structured input to a separate coaching component. The browser prototype derives small deterministic cues for checks, captures, castling, promotion, and visible multi-attacks. These cues deliberately do not claim to be deep tactical proof. Deeper post-match work will use larger limits and classify critical decisions.
+Engine scores and principal variations are structured input to a separate coaching component. The browser prototype derives small deterministic cues for checks, captures, castling, promotion, and visible multi-attacks. These cues deliberately do not claim to be deep tactical proof. Its provisional move categories use the fast live budget and may change under deeper analysis.
 
-Basic PGN recording now preserves moves, clock values, results, and the top live recommendation attached to player moves. A future post-match report may add deeper comparison results without changing game-state ownership.
+Basic PGN recording now preserves moves, clock values, results, the top live recommendation attached to player moves, and provisional live quality comments. A future post-match report will add deeper comparison results without changing game-state ownership.
 
 ## State and dependency guidance
 
@@ -105,9 +109,9 @@ Basic PGN recording now preserves moves, clock values, results, and the top live
 
 ## Next implementation slices
 
-1. Add deep post-game analysis that compares played moves with a larger Stockfish budget and reports evaluation loss and critical moments.
-2. Move engine work behind a latest-position background coordinator so browser requests are not blocked and stale results cannot be published.
-3. Expand deterministic coaching from basic tactical cues to score-change, threat, and positional explanations.
+1. Move engine work behind a latest-position background coordinator so browser requests are not blocked and stale results cannot be published.
+2. Add deep post-game analysis that recomputes played moves with a larger Stockfish budget and reports stable evaluation loss and critical moments.
+3. Expand deterministic coaching from basic tactical cues to score-change, threat, and positional explanations, including optional principal-variation overlays.
 4. Add a manual external-bot companion only for an explicitly permitted mode; keep it independent from website acquisition or control.
 5. Add thesis-oriented exports and metrics once live and deep-analysis outputs are stable.
 

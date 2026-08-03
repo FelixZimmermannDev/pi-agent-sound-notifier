@@ -64,9 +64,11 @@ Tests normally add value for:
 - FEN and move validation behavior;
 - legal-move and recommendation transformation;
 - evaluation and mate-score presentation rules;
+- fixed White-perspective normalization and evaluation-bar mapping;
+- provisional move-quality thresholds and per-color running accuracy;
 - explicit state changes in an interactive local session;
-- server-authoritative countdown, increment, and timeout behavior;
-- browser API move coordination and incremental PGN recording;
+- server-authoritative countdown, increment, timeout behavior, and exclusion of coach-only analysis overhead;
+- browser API move coordination and incremental annotated PGN recording;
 - engine startup, failure handling, limits, and shutdown;
 - bug fixes and regressions.
 
@@ -77,7 +79,8 @@ Tests normally do not add value for documentation-only changes, formatting, empt
 - Test externally visible behavior through public APIs.
 - Give each test one clear purpose and a descriptive name.
 - Do not assert an exact Stockfish best move or centipawn score in ordinary tests; engine versions and settings can change them.
-- For deterministic recommendation tests, use controlled engine results.
+- For deterministic recommendation and move-quality tests, use controlled engine results.
+- Keep provisional live-quality tests separate from future deep post-game classification; they use different analysis budgets and stability guarantees.
 - With a real engine, assert stable invariants such as successful startup, legal returned moves, bounded result count, and clean shutdown.
 - Verify that rejected operations do not mutate a caller-owned board or session state.
 - Avoid real network access in the default test suite.
