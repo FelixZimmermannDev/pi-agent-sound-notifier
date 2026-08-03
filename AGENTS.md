@@ -39,6 +39,14 @@ Never claim that the application works solely because its architecture looks cor
 - For Clean Code reviews or behavior-preserving refactoring, load the global `clean-code-coach` skill and apply `docs/architecture.md`.
 - Do not load detailed architecture or testing documents for unrelated questions or narrow mechanical work.
 
+## Project-local harness feedback loop
+
+- The `Project Harness Feedback Loop` lives only under `.pi/extensions/project-harness-feedback-loop/` in this repository and is activated with `/guarded <implementation request>`.
+- Keep the global `C:\Users\Felix\.pi\agent\AGENTS.md`, global extensions, credentials, models, and settings unchanged.
+- A guarded task must record an explicit task contract before file edits, run deterministic checks, and use an isolated read-only evaluator to distinguish translation failures from implementation failures.
+- Treat evaluator interface improvements as project-local proposals. Do not automatically rewrite canonical requirements; confirmed harness corrections require a generalized regression eval.
+- Raw guarded-run evidence belongs under the ignored `output/project-harness-feedback-loop/` directory, not in durable context documents.
+
 ## Architecture and implementation standards
 
 - Use a small, professional layered design with explicit boundaries between position input, application coordination, Stockfish integration, and presentation.
