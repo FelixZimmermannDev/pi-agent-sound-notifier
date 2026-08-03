@@ -317,21 +317,41 @@ h2 {
   pointer-events: none;
 }
 
-#coach-arrow {
-  stroke: #b8e45f;
+.candidate-arrow {
   stroke-linecap: round;
-  stroke-width: 15;
-  opacity: 0;
-  filter: drop-shadow(0 2px 2px rgb(24 35 13 / 50%));
-  transition: opacity 150ms ease;
+  stroke-width: 14;
+  opacity: 0.32;
+  filter: drop-shadow(0 2px 2px rgb(24 28 19 / 46%));
+  transition: opacity 150ms ease, stroke-width 150ms ease;
 }
 
-#coach-arrow.visible {
-  opacity: 0.82;
+.candidate-arrow.selected {
+  stroke-width: 17;
+  opacity: 0.86;
 }
 
-#coach-arrowhead path {
+.candidate-arrow.rank-1 {
+  stroke: #b8e45f;
+}
+
+.candidate-arrow.rank-2 {
+  stroke: #59b6e8;
+}
+
+.candidate-arrow.rank-3 {
+  stroke: #e8a44f;
+}
+
+.arrowhead-1 {
   fill: #b8e45f;
+}
+
+.arrowhead-2 {
+  fill: #59b6e8;
+}
+
+.arrowhead-3 {
+  fill: #e8a44f;
 }
 
 .square {
@@ -544,11 +564,38 @@ button:disabled {
 }
 
 .recommendation-card {
+  width: 100%;
   border: 1px solid var(--border);
   border-left: 3px solid #6f8f43;
   border-radius: 8px;
   background: linear-gradient(135deg, var(--surface-raised), #36342f);
+  color: inherit;
   padding: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.recommendation-card.rank-1 {
+  border-left-color: #b8e45f;
+}
+
+.recommendation-card.rank-2 {
+  border-left-color: #59b6e8;
+}
+
+.recommendation-card.rank-3 {
+  border-left-color: #e8a44f;
+}
+
+.recommendation-card.selected {
+  border-color: #d8d9cf;
+  box-shadow: 0 0 0 2px rgb(216 217 207 / 10%);
+}
+
+.recommendation-card:hover,
+.recommendation-card:focus-visible {
+  background: #414039;
+  outline: none;
 }
 
 .recommendation-topline {

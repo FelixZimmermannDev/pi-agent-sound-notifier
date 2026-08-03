@@ -13,7 +13,7 @@ const resetButton = document.querySelector("#reset-button");
 const errorMessage = document.querySelector("#error-message");
 const recommendationsElement = document.querySelector("#recommendations");
 const moveListElement = document.querySelector("#move-list");
-const coachArrowElement = document.querySelector("#coach-arrow");
+const candidateArrowsElement = document.querySelector("#candidate-arrows");
 const evaluationBarElement = document.querySelector("#evaluation-bar");
 const evaluationWhiteElement = document.querySelector("#evaluation-white");
 const evaluationBlackElement = document.querySelector("#evaluation-black");
@@ -21,6 +21,7 @@ const evaluationScoreElement = document.querySelector("#evaluation-score");
 
 let gameState = null;
 let selectedSquare = null;
+let selectedCandidateUci = null;
 let requestInProgress = false;
 let stateReceivedAt = performance.now();
 
@@ -46,10 +47,14 @@ async function loadState() {
 
 function applyState(nextState) {
   const positionChanged = gameState?.fen !== nextState.fen;
+  const availableCandidates = nextState.recommendation.map(candidate => candidate.uci);
   gameState = nextState;
   stateReceivedAt = performance.now();
   if (positionChanged || !nextState.is_player_turn) {
     selectedSquare = null;
+  }
+  if (positionChanged || !availableCandidates.includes(selectedCandidateUci)) {
+    selectedCandidateUci = availableCandidates[0] ?? null;
   }
   hideError();
   render();
@@ -96,11 +101,12 @@ function renderBoard() {
   const legalTargets = selectedSquare
     ? gameState.legal_moves.filter(move => move.startsWith(selectedSquare))
     : [];
-  const coachMove = gameState.is_player_turn && gameState.recommendation.length > 0
-    ? gameState.recommendation[0].uci
-    : null;
-  const coachSource = coachMove?.slice(0, 2);
-  const coachTarget = coachMove?.slice(2, 4);
+  const candidates = gameState.is_player_turn ? gameState.recommendation : [];
+  const selectedCandidate = candidates.find(
+    candidate => candidate.uci === selectedCandidateUci,
+  ) ?? candidates[0];
+  const coachSource = selectedCandidate?.uci.slice(0, 2);
+  const coachTarget = selectedCandidate?.uci.slice(2, 4);
 
   boardElement.replaceChildren();
   ranks.forEach((rank, rankIndex) => {
@@ -140,29 +146,40 @@ function renderBoard() {
       boardElement.append(square);
     });
   });
-  renderCoachArrow(coachMove, whiteOrientation);
+  renderCandidateArrows(candidates, whiteOrientation);
 }
 
-function renderCoachArrow(move, whiteOrientation) {
-  if (!move) {
-    coachArrowElement.classList.remove("visible");
-    return;
-  }
+function renderCandidateArrows(candidates, whiteOrientation) {
+  candidateArrowsElement.replaceChildren();
+  candidates.forEach(candidate => {
+    const rankStyle = Math.min(candidate.rank, 3);
+    const endpoints = arrowEndpoints(candidate.uci, whiteOrientation);
+    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    line.classList.add("candidate-arrow", `rank-${rankStyle}`);
+    if (candidate.uci === selectedCandidateUci) line.classList.add("selected");
+    line.setAttribute("x1", endpoints.start.x);
+    line.setAttribute("y1", endpoints.start.y);
+    line.setAttribute("x2", endpoints.end.x);
+    line.setAttribute("y2", endpoints.end.y);
+    line.setAttribute("marker-end", `url(#candidate-arrowhead-${rankStyle})`);
+    candidateArrowsElement.append(line);
+  });
+}
 
+function arrowEndpoints(move, whiteOrientation) {
   const start = squareCenter(move.slice(0, 2), whiteOrientation);
   const target = squareCenter(move.slice(2, 4), whiteOrientation);
   const deltaX = target.x - start.x;
   const deltaY = target.y - start.y;
   const distance = Math.hypot(deltaX, deltaY);
   const shortenBy = Math.min(28, distance * 0.2);
-  const endX = target.x - (deltaX / distance) * shortenBy;
-  const endY = target.y - (deltaY / distance) * shortenBy;
-
-  coachArrowElement.setAttribute("x1", start.x);
-  coachArrowElement.setAttribute("y1", start.y);
-  coachArrowElement.setAttribute("x2", endX);
-  coachArrowElement.setAttribute("y2", endY);
-  coachArrowElement.classList.add("visible");
+  return {
+    start,
+    end: {
+      x: target.x - (deltaX / distance) * shortenBy,
+      y: target.y - (deltaY / distance) * shortenBy,
+    },
+  };
 }
 
 function squareCenter(square, whiteOrientation) {
@@ -325,8 +342,21 @@ function renderRecommendations() {
   coachState.textContent = "Bereit";
   coachState.className = "state-pill ready";
   gameState.recommendation.forEach(candidate => {
-    const card = document.createElement("article");
-    card.className = "recommendation-card";
+    const rankStyle = Math.min(candidate.rank, 3);
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = `recommendation-card rank-${rankStyle}`;
+    card.classList.toggle("selected", candidate.uci === selectedCandidateUci);
+    card.setAttribute(
+      "aria-pressed",
+      candidate.uci === selectedCandidateUci ? "true" : "false",
+    );
+    card.addEventListener("click", () => {
+      selectedCandidateUci = candidate.uci;
+      selectedSquare = null;
+      renderBoard();
+      renderRecommendations();
+    });
 
     const topLine = document.createElement("div");
     topLine.className = "recommendation-topline";

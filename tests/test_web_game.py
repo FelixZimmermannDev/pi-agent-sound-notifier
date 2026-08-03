@@ -25,23 +25,29 @@ class DeterministicWebEngine:
     ) -> tuple[CandidateMove, ...]:
         self.analysis_calls.append(board.fen())
         preferred_moves = ("e2e4", "g1f3", "e7e5", "g8f6")
-        move = next(
-            (
-                chess.Move.from_uci(uci)
-                for uci in preferred_moves
-                if chess.Move.from_uci(uci) in board.legal_moves
-            ),
-            next(iter(board.legal_moves)),
-        )
-        san = board.san(move)
-        return (
-            CandidateMove(
-                san=san,
-                uci=move.uci(),
-                evaluation=Evaluation(centipawns=25),
-                principal_variation_san=(san,),
-            ),
-        )
+        moves: list[chess.Move] = []
+        for uci in preferred_moves:
+            move = chess.Move.from_uci(uci)
+            if move in board.legal_moves and move not in moves:
+                moves.append(move)
+        for move in board.legal_moves:
+            if move not in moves:
+                moves.append(move)
+            if len(moves) >= candidate_count:
+                break
+
+        candidates: list[CandidateMove] = []
+        for rank, move in enumerate(moves[:candidate_count], start=1):
+            san = board.san(move)
+            candidates.append(
+                CandidateMove(
+                    san=san,
+                    uci=move.uci(),
+                    evaluation=Evaluation(centipawns=30 - rank * 5),
+                    principal_variation_san=(san,),
+                )
+            )
+        return tuple(candidates)
 
     def choose_move(
         self,
@@ -88,6 +94,7 @@ def test_web_game_tracks_manual_player_move_bot_reply_and_live_advice(
     started = game.start()
     assert started.is_player_turn
     assert started.recommendation[0].uci == "e2e4"
+    assert [candidate.uci for candidate in started.recommendation] == ["e2e4", "g1f3"]
     assert started.evaluation_bar is not None
     assert started.evaluation_bar.white_percent > 50
 

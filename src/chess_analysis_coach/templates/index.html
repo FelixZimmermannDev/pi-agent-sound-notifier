@@ -44,11 +44,17 @@
           <div id="board" class="board" role="grid" aria-label="Schachbrett"></div>
           <svg id="coach-overlay" class="coach-overlay" viewBox="0 0 800 800" aria-hidden="true">
             <defs>
-              <marker id="coach-arrowhead" markerWidth="5" markerHeight="5" refX="3.4" refY="2.5" orient="auto" markerUnits="strokeWidth">
-                <path d="M 0 0 L 5 2.5 L 0 5 z"></path>
+              <marker id="candidate-arrowhead-1" markerWidth="5" markerHeight="5" refX="3.4" refY="2.5" orient="auto" markerUnits="strokeWidth">
+                <path class="arrowhead-1" d="M 0 0 L 5 2.5 L 0 5 z"></path>
+              </marker>
+              <marker id="candidate-arrowhead-2" markerWidth="5" markerHeight="5" refX="3.4" refY="2.5" orient="auto" markerUnits="strokeWidth">
+                <path class="arrowhead-2" d="M 0 0 L 5 2.5 L 0 5 z"></path>
+              </marker>
+              <marker id="candidate-arrowhead-3" markerWidth="5" markerHeight="5" refX="3.4" refY="2.5" orient="auto" markerUnits="strokeWidth">
+                <path class="arrowhead-3" d="M 0 0 L 5 2.5 L 0 5 z"></path>
               </marker>
             </defs>
-            <line id="coach-arrow" marker-end="url(#coach-arrowhead)"></line>
+            <g id="candidate-arrows"></g>
           </svg>
         </div>
       </div>
@@ -71,7 +77,7 @@
           <p class="eyebrow">Partiestatus</p>
           <h2 id="game-status">Bereit für eine lokale Partie</h2>
           <p id="status-detail">Starte die Uhr, wenn du bereit bist.</p>
-          <p class="coach-legend"><span></span> Der grüne Pfeil zeigt den aktuellen Live-Vorschlag – ziehen musst du selbst.</p>
+          <p class="coach-legend"><span></span> Die farbigen Pfeile zeigen Live-Kandidaten. Wähle rechts einen Zug aus – ziehen musst du selbst.</p>
         </div>
         <div class="button-row">
           <button id="start-button" class="primary-button" type="button">Partie starten</button>
