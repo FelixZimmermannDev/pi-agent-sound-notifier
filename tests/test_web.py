@@ -106,6 +106,19 @@ def test_local_web_api_serves_page_and_one_complete_turn() -> None:
     assert "e4" in pgn.get_data(as_text=True)
 
 
+def test_local_web_api_rejects_bot_move_during_player_turn() -> None:
+    app = create_app(create_test_game())
+    app.testing = True
+    client = app.test_client()
+    client.post("/api/game/start", json={})
+
+    response = client.post("/api/game/bot-move", json={})
+
+    assert response.status_code == 400
+    assert "cannot move on your turn" in response.get_json()["error"]
+    assert client.get("/api/game").get_json()["revision"] == 0
+
+
 def test_local_web_api_returns_actionable_error_for_missing_move() -> None:
     app = create_app(create_test_game())
     app.testing = True

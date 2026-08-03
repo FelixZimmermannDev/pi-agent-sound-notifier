@@ -18,9 +18,10 @@ Terminal session → recommendation → player SAN/UCI move
                  → Elo-limited local bot move → repeat
 
 Local browser → player-only MultiPV recommendation + fixed evaluation bar
-              → player click move → provisional bounded quality comparison
-              → Elo-limited local bot move → next recommendation
-              → browser state + incremental annotated PGN snapshot
+              → player click/drag move → bounded quality comparison
+              → intermediate bot-turn state → optional local premove queue
+              → Elo-limited bot move → validate/apply or reject premove
+              → next recommendation + incremental annotated PGN snapshot
 ```
 
 - `chess_analysis_coach.cli` owns the `analyze`, `play`, and `web` commands, Stockfish path discovery, process lifetime, terminal output, and exit codes.
@@ -28,7 +29,9 @@ Local browser → player-only MultiPV recommendation + fixed evaluation bar
 - `LocalGameSession` is the single owner of interactive board state. It applies legal player/bot moves, increments a monotonic revision, supports bounded undo, and exposes defensive snapshots.
 - The synchronous terminal prototype requests one recommendation for each new position revision and never reanalyzes unchanged state after informational commands or rejected moves.
 - `LocalWebGame` coordinates one browser game without putting chess rules into HTTP routes or JavaScript. It accepts only player-selected legal moves, invokes Stockfish for the local opponent, and publishes recommendations only on the player's turn.
-- The browser presents the top MultiPV candidates as selectable color-matched root arrows. Arrow selection is presentation state and never applies a move.
+- The browser supports click and native drag input through the same legal-move submission path. Dragging changes presentation only until the validated API call succeeds.
+- Player and bot phases use separate HTTP operations. During the blocking bot operation, JavaScript may queue one local premove from a server-provided bounded candidate set. After the bot response, the premove is submitted only when it is legal in the actual resulting position; otherwise it is discarded without mutating server state.
+- The browser presents the top MultiPV candidates as selectable color-matched root arrows. Arrow selection is presentation state and never applies a move. The Stockfish adapter also preserves up to six UCI principal-variation plies; presentation draws only the selected candidate's expected reply and next own move as numbered dashed arrows to keep the board readable.
 - The evaluation bar normalizes the top candidate to a fixed White perspective. A bounded arctangent mapping converts centipawns to a visual share; mate and terminal results pin the bar to the winning side.
 - After a move, a second bounded position evaluation estimates normalized evaluation-share loss. Transparent thresholds produce a provisional category and per-color running mean. This metric is intentionally not called or treated as Chess.com's proprietary Accuracy.
 - `ChessClock` is the server-side authority for both countdowns and increment. Browser countdown animation is presentation only; polling reconciles it with server time. Coach-only evaluation runs while both game clocks are stopped, so application overhead is not charged to either side.
@@ -79,7 +82,7 @@ Live analysis must not let old results overwrite newer recommendations. The coor
 
 ### Coaching and recording
 
-Engine scores and principal variations are structured input to a separate coaching component. The browser prototype derives small deterministic cues for checks, captures, castling, promotion, and visible multi-attacks. These cues deliberately do not claim to be deep tactical proof. Its provisional move categories use the fast live budget and may change under deeper analysis.
+Engine scores and SAN/UCI principal variations are structured input to a separate coaching component. The browser prototype derives small deterministic cues for checks, captures, castling, promotion, visible multi-attacks, development, central control, and king safety. Each candidate plan may name the expected reply and one next own step. These cues deliberately do not claim to be deep tactical proof, and only three plies are visualized. Provisional move categories use the fast live budget and may change under deeper analysis.
 
 Basic PGN recording now preserves moves, clock values, results, the top live recommendation attached to player moves, and provisional live quality comments. A future post-match report will add deeper comparison results without changing game-state ownership.
 
@@ -109,7 +112,7 @@ Basic PGN recording now preserves moves, clock values, results, the top live rec
 
 ## Next implementation slices
 
-1. Move engine work behind a latest-position background coordinator so browser requests are not blocked and stale results cannot be published.
+1. Move engine work behind a latest-position background coordinator so the bot request itself is not blocked and stale results cannot be published; preserve the implemented premove validation contract.
 2. Add deep post-game analysis that recomputes played moves with a larger Stockfish budget and reports stable evaluation loss and critical moments.
 3. Expand deterministic coaching from basic tactical cues to score-change, threat, and positional explanations, including optional principal-variation overlays.
 4. Add a manual external-bot companion only for an explicitly permitted mode; keep it independent from website acquisition or control.
