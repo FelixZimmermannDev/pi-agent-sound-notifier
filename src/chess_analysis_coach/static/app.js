@@ -1,10 +1,5 @@
 "use strict";
 
-const pieceSymbols = {
-  K: "♔", Q: "♕", R: "♖", B: "♗", N: "♘", P: "♙",
-  k: "♚", q: "♛", r: "♜", b: "♝", n: "♞", p: "♟",
-};
-
 const pieceNames = {
   K: "weißer König", Q: "weiße Dame", R: "weißer Turm",
   B: "weißer Läufer", N: "weißer Springer", P: "weißer Bauer",
@@ -18,6 +13,7 @@ const resetButton = document.querySelector("#reset-button");
 const errorMessage = document.querySelector("#error-message");
 const recommendationsElement = document.querySelector("#recommendations");
 const moveListElement = document.querySelector("#move-list");
+const coachArrowElement = document.querySelector("#coach-arrow");
 
 let gameState = null;
 let selectedSquare = null;
@@ -95,6 +91,11 @@ function renderBoard() {
   const legalTargets = selectedSquare
     ? gameState.legal_moves.filter(move => move.startsWith(selectedSquare))
     : [];
+  const coachMove = gameState.is_player_turn && gameState.recommendation.length > 0
+    ? gameState.recommendation[0].uci
+    : null;
+  const coachSource = coachMove?.slice(0, 2);
+  const coachTarget = coachMove?.slice(2, 4);
 
   boardElement.replaceChildren();
   ranks.forEach((rank, rankIndex) => {
@@ -112,6 +113,8 @@ function renderBoard() {
         piece ? `${squareName}, ${pieceNames[piece]}` : `${squareName}, leer`,
       );
 
+      if (squareName === coachSource) square.classList.add("coach-source");
+      if (squareName === coachTarget) square.classList.add("coach-target");
       if (selectedSquare === squareName) square.classList.add("selected");
       if (legalTargets.some(move => move.slice(2, 4) === squareName)) {
         square.classList.add("legal-target");
@@ -119,9 +122,11 @@ function renderBoard() {
       }
 
       if (piece) {
-        const pieceElement = document.createElement("span");
-        pieceElement.className = `piece ${piece === piece.toUpperCase() ? "white-piece" : "black-piece"}`;
-        pieceElement.textContent = pieceSymbols[piece];
+        const pieceElement = document.createElement("img");
+        pieceElement.className = "piece";
+        pieceElement.src = `/pieces/${piece}.svg`;
+        pieceElement.alt = "";
+        pieceElement.draggable = false;
         square.append(pieceElement);
       }
       if (fileIndex === 0) square.append(coordinateLabel("rank", String(rank)));
@@ -130,6 +135,38 @@ function renderBoard() {
       boardElement.append(square);
     });
   });
+  renderCoachArrow(coachMove, whiteOrientation);
+}
+
+function renderCoachArrow(move, whiteOrientation) {
+  if (!move) {
+    coachArrowElement.classList.remove("visible");
+    return;
+  }
+
+  const start = squareCenter(move.slice(0, 2), whiteOrientation);
+  const target = squareCenter(move.slice(2, 4), whiteOrientation);
+  const deltaX = target.x - start.x;
+  const deltaY = target.y - start.y;
+  const distance = Math.hypot(deltaX, deltaY);
+  const shortenBy = Math.min(28, distance * 0.2);
+  const endX = target.x - (deltaX / distance) * shortenBy;
+  const endY = target.y - (deltaY / distance) * shortenBy;
+
+  coachArrowElement.setAttribute("x1", start.x);
+  coachArrowElement.setAttribute("y1", start.y);
+  coachArrowElement.setAttribute("x2", endX);
+  coachArrowElement.setAttribute("y2", endY);
+  coachArrowElement.classList.add("visible");
+}
+
+function squareCenter(square, whiteOrientation) {
+  const file = square.charCodeAt(0) - 97;
+  const rank = Number(square[1]);
+  return {
+    x: (whiteOrientation ? file : 7 - file) * 100 + 50,
+    y: (whiteOrientation ? 8 - rank : rank - 1) * 100 + 50,
+  };
 }
 
 function coordinateLabel(kind, text) {

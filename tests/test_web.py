@@ -62,6 +62,18 @@ def test_local_web_api_serves_page_and_one_complete_turn() -> None:
     page = client.get("/")
     assert page.status_code == 200
     assert "Chess Analysis Coach" in page.get_data(as_text=True)
+    assert 'id="coach-arrow"' in page.get_data(as_text=True)
+
+    stylesheet = client.get("/static/app.css")
+    assert stylesheet.status_code == 200
+    assert "grid-template-rows: repeat(8, minmax(0, 1fr))" in stylesheet.get_data(
+        as_text=True
+    )
+
+    white_king = client.get("/pieces/K.svg")
+    assert white_king.status_code == 200
+    assert white_king.mimetype == "image/svg+xml"
+    assert "<svg" in white_king.get_data(as_text=True)
 
     started = client.post("/api/game/start", json={})
     assert started.status_code == 200

@@ -6,7 +6,8 @@ from threading import Timer
 import webbrowser
 
 import chess
-from flask import Flask, Response, jsonify, render_template, request
+import chess.svg
+from flask import Flask, Response, abort, jsonify, render_template, request
 
 from chess_analysis_coach.errors import EngineError, SessionError
 from chess_analysis_coach.web_game import LocalWebGame, WebGameEngine, WebGameSettings
@@ -20,6 +21,16 @@ def create_app(game: LocalWebGame) -> Flask:
     @app.get("/")
     def index() -> str:
         return render_template("index.html")
+
+    @app.get("/pieces/<symbol>.svg")
+    def piece_image(symbol: str) -> Response:
+        if len(symbol) != 1 or symbol not in "KQRBNPkqrbnp":
+            abort(404)
+        return Response(
+            chess.svg.piece(chess.Piece.from_symbol(symbol), size=100),
+            mimetype="image/svg+xml",
+            headers={"Cache-Control": "public, max-age=86400"},
+        )
 
     @app.get("/api/game")
     def game_state() -> Response:
