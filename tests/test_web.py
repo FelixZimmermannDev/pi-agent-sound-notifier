@@ -167,16 +167,18 @@ def test_local_web_api_rejects_invalid_bot_elo_without_starting() -> None:
     assert not client.get("/api/game").get_json()["started"]
 
 
-def test_local_web_api_rejects_invalid_coach_elo_without_starting() -> None:
-    app = create_app(create_test_game())
+def test_local_web_api_rejects_invalid_coach_elo_without_changing_game() -> None:
+    app = create_app(create_test_game(coach_elo=1800))
     app.testing = True
     client = app.test_client()
 
     response = client.post("/api/game/start", json={"coach_elo": 1000})
+    state = client.get("/api/game").get_json()
 
     assert response.status_code == 400
     assert "Coach Elo must be between" in response.get_json()["error"]
-    assert not client.get("/api/game").get_json()["started"]
+    assert not state["started"]
+    assert state["coach_elo"] == 1800
 
 
 def test_local_web_api_rejects_bot_move_during_player_turn() -> None:
