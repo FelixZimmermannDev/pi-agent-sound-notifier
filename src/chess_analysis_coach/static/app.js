@@ -66,6 +66,7 @@ function render() {
   renderPlayers();
   renderEvaluationBar();
   renderStatus();
+  renderMoveQuality();
   renderRecommendations();
   renderMoves();
   renderClocks();
@@ -294,6 +295,39 @@ function renderEvaluationBar() {
   evaluationBarElement.setAttribute("aria-label", description);
 }
 
+function renderMoveQuality() {
+  const running = gameState.running_accuracy;
+  document.querySelector("#white-accuracy").textContent = formatAccuracy(
+    running.white_percent,
+  );
+  document.querySelector("#black-accuracy").textContent = formatAccuracy(
+    running.black_percent,
+  );
+
+  const container = document.querySelector("#latest-quality");
+  const quality = gameState.latest_move_quality;
+  container.className = "latest-quality";
+  container.replaceChildren();
+  if (!quality) {
+    container.textContent = "Nach deinem ersten Zug erscheint hier die schnelle Bewertung.";
+    return;
+  }
+
+  container.classList.add(quality.category);
+  const title = document.createElement("strong");
+  title.textContent = `${quality.san}: ${quality.label}`;
+  const detail = document.createElement("span");
+  const loss = quality.loss_percentage_points.toFixed(1);
+  detail.textContent = quality.category === "best"
+    ? "Du hast den ersten Stockfish-Kandidaten gespielt."
+    : `Verlust im Bewertungsanteil: ${loss} Punkte. Besser war ${quality.best_move_san}.`;
+  container.append(title, detail);
+}
+
+function formatAccuracy(value) {
+  return value == null ? "–" : `${value.toFixed(1)}%`;
+}
+
 function renderStatus() {
   if (!gameState) return;
   const status = document.querySelector("#game-status");
@@ -401,15 +435,29 @@ function renderMoves() {
   }
   gameState.moves.forEach(move => {
     const row = document.createElement("tr");
-    [move.number, move.white || "", move.black || ""].forEach(value => {
-      const cell = document.createElement("td");
-      cell.textContent = value;
-      row.append(cell);
-    });
+    const numberCell = document.createElement("td");
+    numberCell.textContent = move.number;
+    row.append(
+      numberCell,
+      moveTableCell(move.white, move.white_quality),
+      moveTableCell(move.black, move.black_quality),
+    );
     moveListElement.append(row);
   });
   const scrollContainer = document.querySelector(".move-table-wrap");
   scrollContainer.scrollTop = scrollContainer.scrollHeight;
+}
+
+function moveTableCell(move, quality) {
+  const cell = document.createElement("td");
+  cell.textContent = move || "";
+  if (quality) {
+    const qualityTag = document.createElement("span");
+    qualityTag.className = "move-quality-tag";
+    qualityTag.textContent = quality;
+    cell.append(qualityTag);
+  }
+  return cell;
 }
 
 function renderClocks() {

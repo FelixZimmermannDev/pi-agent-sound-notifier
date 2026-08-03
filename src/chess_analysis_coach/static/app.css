@@ -558,6 +558,75 @@ button:disabled {
   color: var(--accent-strong);
 }
 
+.accuracy-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.accuracy-grid > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface-raised);
+  padding: 9px 10px;
+}
+
+.accuracy-grid span {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.accuracy-grid output {
+  font-family: "Cascadia Mono", Consolas, monospace;
+  font-size: 0.98rem;
+  font-weight: 800;
+}
+
+.latest-quality {
+  margin-top: 9px;
+  border-left: 3px solid #777a70;
+  border-radius: 5px;
+  background: rgb(255 255 255 / 3%);
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+  padding: 9px 10px;
+}
+
+.latest-quality strong {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--text);
+}
+
+.latest-quality.best,
+.latest-quality.excellent,
+.latest-quality.good {
+  border-left-color: var(--accent-strong);
+}
+
+.latest-quality.inaccuracy {
+  border-left-color: #e8c85a;
+}
+
+.latest-quality.mistake {
+  border-left-color: #e89a4f;
+}
+
+.latest-quality.blunder {
+  border-left-color: var(--danger);
+}
+
+.quality-note {
+  margin: 9px 0 0;
+  color: #85847e;
+  font-size: 0.68rem;
+  line-height: 1.4;
+}
+
 .recommendations {
   display: grid;
   gap: 9px;
@@ -662,6 +731,14 @@ button:disabled {
 .move-table td:first-child {
   width: 38px;
   color: var(--muted);
+}
+
+.move-quality-tag {
+  display: block;
+  margin-top: 2px;
+  color: #92968a;
+  font-size: 0.62rem;
+  line-height: 1.2;
 }
 
 .empty-cell {

@@ -84,7 +84,11 @@ def test_local_web_api_serves_page_and_one_complete_turn() -> None:
     moved = client.post("/api/game/move", json={"move": "e2e4"})
     payload = moved.get_json()
     assert moved.status_code == 200
-    assert payload["moves"] == [{"black": "e5", "number": 1, "white": "e4"}]
+    assert payload["moves"][0]["white"] == "e4"
+    assert payload["moves"][0]["black"] == "e5"
+    assert payload["moves"][0]["white_quality"] == "Bester Zug"
+    assert payload["latest_move_quality"]["category"] == "best"
+    assert payload["running_accuracy"]["white_percent"] == 100
     assert payload["is_player_turn"]
 
     pgn = client.get("/api/game/pgn")

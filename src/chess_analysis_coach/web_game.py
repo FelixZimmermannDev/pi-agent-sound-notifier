@@ -16,6 +16,7 @@ from chess_analysis_coach.evaluation import (
 )
 from chess_analysis_coach.game_clock import ChessClock
 from chess_analysis_coach.models import Recommendation
+from chess_analysis_coach.move_quality import MoveQuality, assess_move
 from chess_analysis_coach.presentation import format_evaluation
 from chess_analysis_coach.recording import (
     RecordedMove,
@@ -69,10 +70,32 @@ class CandidateView:
 
 
 @dataclass(frozen=True)
+class AssessedMoveView:
+    color: str
+    san: str
+    uci: str
+    category: str
+    label: str
+    accuracy_percent: float
+    loss_percentage_points: float
+    best_move_san: str
+    best_move_uci: str
+
+
+@dataclass(frozen=True)
+class RunningAccuracyView:
+    white_percent: float | None
+    black_percent: float | None
+    provisional: bool = True
+
+
+@dataclass(frozen=True)
 class MoveRow:
     number: int
     white: str | None
     black: str | None
+    white_quality: str | None
+    black_quality: str | None
 
 
 @dataclass(frozen=True)
@@ -97,6 +120,8 @@ class WebGameView:
     clocks: ClockView
     evaluation_bar: EvaluationSummary | None
     recommendation: tuple[CandidateView, ...]
+    latest_move_quality: AssessedMoveView | None
+    running_accuracy: RunningAccuracyView
     moves: tuple[MoveRow, ...]
     recording_filename: str
 
@@ -131,6 +156,7 @@ class LocalWebGame:
         self._timeout_color: chess.Color | None = None
         self._recommendation: Recommendation | None = None
         self._moves: list[RecordedMove] = []
+        self._move_assessments: list[AssessedMoveView | None] = []
         self._recording_path = (
             create_recording_path(self._recording_directory)
             if self._recording_directory is not None
@@ -146,11 +172,13 @@ class LocalWebGame:
             self._persist()
             return self.state()
 
-        self._clock.start(self._session.snapshot().turn)
         if self._session.is_player_turn:
-            self._refresh_recommendation()
+            self._recommendation = self._analyze_current_position()
+            self._clock.start(self._settings.player_color)
         else:
-            self._play_bot_turn()
+            bot_recommendation = self._analyze_current_position()
+            self._clock.start(self._session.snapshot().turn)
+            self._play_bot_turn(bot_recommendation)
         self._persist()
         return self.state()
 
@@ -161,26 +189,56 @@ class LocalWebGame:
             raise SessionStateError("Your clock reached zero before the move was played.")
 
         board_before = self._session.snapshot()
-        preview = board_before.copy(stack=True)
-        preview.push(move)
-        next_color = None if preview.is_game_over(claim_draw=True) else preview.turn
+        recommendation_before = self._recommendation
         if not self._clock.finish_move(
             self._settings.player_color,
-            next_color=next_color,
+            next_color=None,
         ):
             self._set_timeout(self._settings.player_color)
             raise SessionStateError("Your clock reached zero before the move was played.")
 
         coach_comment = self._coach_comment()
         played_move = self._session.apply_player_move(move.uci())
-        self._record_move(played_move.uci, self._settings.player_color, coach_comment)
         self._recommendation = None
 
         if self._session.is_game_over:
+            board_after = self._session.snapshot()
+            assessment = self._assess_played_move(
+                recommendation_before=recommendation_before,
+                board_before=board_before,
+                recommendation_after=None,
+                board_after=board_after,
+                played_san=played_move.san,
+                played_uci=played_move.uci,
+            )
+            self._record_move(
+                played_move.uci,
+                self._settings.player_color,
+                coach_comment,
+                assessment,
+            )
             self._persist()
             return self.state()
 
-        self._play_bot_turn()
+        board_after = self._session.snapshot()
+        bot_recommendation = self._analyze_current_position()
+        assessment = self._assess_played_move(
+            recommendation_before=recommendation_before,
+            board_before=board_before,
+            recommendation_after=bot_recommendation,
+            board_after=board_after,
+            played_san=played_move.san,
+            played_uci=played_move.uci,
+        )
+        self._record_move(
+            played_move.uci,
+            self._settings.player_color,
+            coach_comment,
+            assessment,
+        )
+
+        self._clock.start(board_after.turn)
+        self._play_bot_turn(bot_recommendation)
         self._persist()
         return self.state()
 
@@ -229,6 +287,8 @@ class LocalWebGame:
             ),
             evaluation_bar=self._evaluation_summary(board),
             recommendation=recommendation,
+            latest_move_quality=self._latest_move_quality(),
+            running_accuracy=self._running_accuracy(),
             moves=self._move_rows(),
             recording_filename=(
                 self._recording_path.name
@@ -248,48 +308,68 @@ class LocalWebGame:
             termination=termination,
         )
 
-    def _play_bot_turn(self) -> None:
+    def _play_bot_turn(
+        self,
+        recommendation_before: Recommendation | None,
+    ) -> None:
         if self._is_game_over() or self._session.is_player_turn:
             return
 
-        board = self._session.snapshot()
+        board_before = self._session.snapshot()
         bot_move = self._engine.choose_move(
-            board,
+            board_before,
             time_limit_seconds=self._settings.bot_time_seconds,
             strength_elo=self._settings.bot_elo,
         )
-        if bot_move not in board.legal_moves:
+        if bot_move not in board_before.legal_moves:
             raise InvalidMoveError(
                 f"The engine selected an illegal move: {bot_move.uci()}."
             )
         if self._sync_timeout():
             return
 
-        preview = board.copy(stack=True)
-        preview.push(bot_move)
-        next_color = None if preview.is_game_over(claim_draw=True) else preview.turn
         bot_color = not self._settings.player_color
-        if not self._clock.finish_move(bot_color, next_color=next_color):
+        if not self._clock.finish_move(bot_color, next_color=None):
             self._set_timeout(bot_color)
             return
 
         played_move = self._session.apply_bot_move(bot_move)
-        self._record_move(played_move.uci, bot_color)
         if self._session.is_game_over:
+            board_after = self._session.snapshot()
+            assessment = self._assess_played_move(
+                recommendation_before=recommendation_before,
+                board_before=board_before,
+                recommendation_after=None,
+                board_after=board_after,
+                played_san=played_move.san,
+                played_uci=played_move.uci,
+            )
+            self._record_move(played_move.uci, bot_color, assessment=assessment)
             self._persist()
             return
-        self._refresh_recommendation()
 
-    def _refresh_recommendation(self) -> None:
-        if self._session.is_player_turn and not self._is_game_over():
-            self._recommendation = recommend_moves(
-                self._session.snapshot(),
-                self._engine,
-                time_limit_seconds=self._settings.coach_time_seconds,
-                candidate_count=self._settings.candidate_count,
-                strength_elo=self._settings.coach_elo,
-            )
-            self._sync_timeout()
+        board_after = self._session.snapshot()
+        player_recommendation = self._analyze_current_position()
+        assessment = self._assess_played_move(
+            recommendation_before=recommendation_before,
+            board_before=board_before,
+            recommendation_after=player_recommendation,
+            board_after=board_after,
+            played_san=played_move.san,
+            played_uci=played_move.uci,
+        )
+        self._record_move(played_move.uci, bot_color, assessment=assessment)
+        self._recommendation = player_recommendation
+        self._clock.start(board_after.turn)
+
+    def _analyze_current_position(self) -> Recommendation:
+        return recommend_moves(
+            self._session.snapshot(),
+            self._engine,
+            time_limit_seconds=self._settings.coach_time_seconds,
+            candidate_count=self._settings.candidate_count,
+            strength_elo=self._settings.coach_elo,
+        )
 
     def _evaluation_summary(
         self,
@@ -322,6 +402,54 @@ class LocalWebGame:
             for rank, candidate in enumerate(self._recommendation.candidates, start=1)
         )
 
+    def _assess_played_move(
+        self,
+        *,
+        recommendation_before: Recommendation | None,
+        board_before: chess.Board,
+        recommendation_after: Recommendation | None,
+        board_after: chess.Board,
+        played_san: str,
+        played_uci: str,
+    ) -> AssessedMoveView | None:
+        if recommendation_before is None or not recommendation_before.candidates:
+            return None
+
+        if recommendation_after is not None and recommendation_after.candidates:
+            after_summary = summarize_evaluation(
+                recommendation_after.candidates[0].evaluation,
+                side_to_move=board_after.turn,
+            )
+        else:
+            outcome = board_after.outcome(claim_draw=True)
+            if outcome is None:
+                return None
+            after_summary = terminal_evaluation(outcome.winner)
+
+        best = recommendation_before.candidates[0]
+        quality: MoveQuality = assess_move(
+            before=summarize_evaluation(
+                best.evaluation,
+                side_to_move=board_before.turn,
+            ),
+            after=after_summary,
+            moving_color=board_before.turn,
+            played_move_uci=played_uci,
+            best_move_san=best.san,
+            best_move_uci=best.uci,
+        )
+        return AssessedMoveView(
+            color=_color_name(board_before.turn),
+            san=played_san,
+            uci=played_uci,
+            category=quality.category,
+            label=quality.label,
+            accuracy_percent=quality.accuracy_percent,
+            loss_percentage_points=quality.loss_percentage_points,
+            best_move_san=quality.best_move_san,
+            best_move_uci=quality.best_move_uci,
+        )
+
     def _coach_comment(self) -> str | None:
         if self._recommendation is None or not self._recommendation.candidates:
             return None
@@ -336,35 +464,92 @@ class LocalWebGame:
         uci: str,
         color: chess.Color,
         coach_comment: str | None = None,
+        assessment: AssessedMoveView | None = None,
     ) -> None:
         clock = self._clock.snapshot()
         remaining = clock.white_seconds if color == chess.WHITE else clock.black_seconds
+        comments = [coach_comment] if coach_comment else []
+        if assessment is not None:
+            comments.append(
+                f"Provisional live quality: {assessment.label}; "
+                f"accuracy {assessment.accuracy_percent:.1f}; "
+                f"evaluation-share loss {assessment.loss_percentage_points:.1f} points."
+            )
         self._moves.append(
             RecordedMove(
                 move=chess.Move.from_uci(uci),
                 remaining_seconds=remaining,
-                coach_comment=coach_comment,
+                coach_comment=" ".join(comments) or None,
             )
+        )
+        self._move_assessments.append(assessment)
+
+    def _latest_move_quality(self) -> AssessedMoveView | None:
+        return next(
+            (
+                assessment
+                for assessment in reversed(self._move_assessments)
+                if (
+                    assessment is not None
+                    and assessment.color == _color_name(self._settings.player_color)
+                )
+            ),
+            None,
+        )
+
+    def _running_accuracy(self) -> RunningAccuracyView:
+        def average_for(color: str) -> float | None:
+            values = [
+                assessment.accuracy_percent
+                for assessment in self._move_assessments
+                if assessment is not None and assessment.color == color
+            ]
+            return sum(values) / len(values) if values else None
+
+        return RunningAccuracyView(
+            white_percent=average_for("white"),
+            black_percent=average_for("black"),
         )
 
     def _move_rows(self) -> tuple[MoveRow, ...]:
         board = self._starting_board.copy(stack=False)
         rows: list[MoveRow] = []
         pending_white: str | None = None
+        pending_white_quality: str | None = None
         move_number = board.fullmove_number
 
-        for recorded_move in self._moves:
+        for index, recorded_move in enumerate(self._moves):
             san = board.san(recorded_move.move)
+            assessment = self._move_assessments[index]
+            quality_label = assessment.label if assessment is not None else None
             if board.turn == chess.WHITE:
                 pending_white = san
+                pending_white_quality = quality_label
             else:
-                rows.append(MoveRow(move_number, pending_white, san))
+                rows.append(
+                    MoveRow(
+                        move_number,
+                        pending_white,
+                        san,
+                        pending_white_quality,
+                        quality_label,
+                    )
+                )
                 pending_white = None
+                pending_white_quality = None
                 move_number += 1
             board.push(recorded_move.move)
 
         if pending_white is not None:
-            rows.append(MoveRow(move_number, pending_white, None))
+            rows.append(
+                MoveRow(
+                    move_number,
+                    pending_white,
+                    None,
+                    pending_white_quality,
+                    None,
+                )
+            )
         return tuple(rows)
 
     def _ensure_active_game(self) -> None:

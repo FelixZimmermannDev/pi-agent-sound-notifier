@@ -106,8 +106,15 @@ def test_web_game_tracks_manual_player_move_bot_reply_and_live_advice(
     assert after_turn.moves[0].white == "e4"
     assert after_turn.moves[0].black == "e5"
     assert after_turn.recommendation[0].uci == "g1f3"
+    assert after_turn.moves[0].white_quality == "Bester Zug"
+    assert after_turn.moves[0].black_quality == "Bester Zug"
+    assert after_turn.latest_move_quality is not None
+    assert after_turn.latest_move_quality.color == "white"
+    assert after_turn.latest_move_quality.category == "best"
+    assert after_turn.running_accuracy.white_percent == 100
+    assert after_turn.running_accuracy.black_percent == 100
     assert len(engine.bot_calls) == 1
-    assert len(engine.analysis_calls) == 2
+    assert len(engine.analysis_calls) == 3
 
     recording_path = tmp_path / after_turn.recording_filename
     assert recording_path.is_file()
@@ -116,6 +123,23 @@ def test_web_game_tracks_manual_player_move_bot_reply_and_live_advice(
     assert [move.uci() for move in recorded_game.mainline_moves()] == ["e2e4", "e7e5"]
     assert recorded_game.headers["White"] == "Player"
     assert "Live coach: e4" in recorded_game.next().comment
+    assert "Provisional live quality: Bester Zug" in recorded_game.next().comment
+
+
+def test_web_game_classifies_a_non_candidate_player_move_provisionally() -> None:
+    engine = DeterministicWebEngine()
+    game = LocalWebGame(engine, board=chess.Board(), settings=settings())
+    game.start()
+
+    state = game.play_player_move("a3")
+
+    assert state.latest_move_quality is not None
+    assert state.latest_move_quality.san == "a3"
+    assert state.latest_move_quality.category == "inaccuracy"
+    assert state.latest_move_quality.best_move_san == "e4"
+    assert state.latest_move_quality.loss_percentage_points > 0
+    assert state.running_accuracy.white_percent is not None
+    assert state.running_accuracy.white_percent < 100
 
 
 def test_web_game_rejects_illegal_player_move_without_bot_reply() -> None:
