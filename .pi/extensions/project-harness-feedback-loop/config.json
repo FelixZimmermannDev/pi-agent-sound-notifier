@@ -9,23 +9,8 @@
   "requireCleanWorktree": true,
   "requirementFiles": [
     "AGENTS.md",
-    "docs/requirements.md",
     "docs/architecture.md",
     "docs/testing.md"
-  ],
-  "checks": [
-    {
-      "name": "python-tests",
-      "program": ".venv/Scripts/python.exe",
-      "args": ["-m", "pytest"],
-      "timeoutSeconds": 120
-    },
-    {
-      "name": "harness-controller-tests",
-      "program": "node",
-      "args": ["--test", ".pi/extensions/project-harness-feedback-loop/core.test.mjs"],
-      "timeoutSeconds": 30
-    }
   ],
   "audit": {
     "thinkingLevel": "medium",
@@ -33,8 +18,7 @@
     "interfaceChanges": "proposal-only"
   },
   "limits": {
-    "maxDiffBytes": 200000,
-    "maxCommandOutputBytes": 50000,
-    "maxUntrackedFileBytes": 100000
+    "maxDiffBytes": 150000,
+    "maxUntrackedFileBytes": 75000
   }
 }

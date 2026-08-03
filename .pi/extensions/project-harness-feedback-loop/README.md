@@ -1,51 +1,44 @@
 # Project Harness Feedback Loop
 
-This repository contains a project-local Pi feedback loop for implementation tasks. It is not installed globally and does not modify the global Pi configuration or global `AGENTS.md`.
+A minimal project-local Pi feedback loop for implementation tasks. It is not installed globally and never modifies global Pi instructions, extensions, models, credentials, or settings.
 
-## Project/global boundary
-
-Pi discovers this extension from the repository path `.pi/extensions/project-harness-feedback-loop/` after the project is trusted. No file is copied to or loaded from the global extension path `C:\Users\Felix\.pi\agent\extensions\`. Pi itself, configured models, credentials, and global instructions remain global infrastructure; this controller, its prompts, config, evals, and evidence are project-owned.
-
-## Daily use
-
-Use one command when a request should change project files:
+## Use
 
 ```text
 /guarded <implementation request>
 ```
 
-Use normal chat prompts for explanation, investigation, or planning that should not change files.
+Use normal chat for explanation, investigation, or planning without requested file changes. A guarded task requires a clean Git worktree so its output diff is attributable to one request.
 
-A guarded run:
+The loop performs only two responsibilities:
 
-1. requires a clean Git worktree so one task has an attributable diff;
-2. snapshots the original request, effective system prompt, and requirement sources;
-3. requires the coding agent to call `record_task_contract` before `edit` or `write`;
-4. runs the configured deterministic checks;
-5. starts one isolated Pi process with read-only tools to evaluate translation and implementation separately;
-6. stores evidence under ignored `output/project-harness-feedback-loop/runs/<run-id>/`;
-7. posts a `PASS`, `CODE`, `CHECKER`, `HARNESS`, `SPEC`, or `MIXED` report in the Pi session.
+1. snapshot the original user request and original loaded requirements, then compare them with the resulting code and tests through an isolated read-only evaluator;
+2. when evidence shows an interface failure, suggest one optional project-local improvement to `prompts/interface.md` without applying it or changing canonical requirements.
 
-The evaluator never edits files. In this first version, a harness improvement is proposal-only. Canonical project requirements are never changed automatically.
+The normal coding agent remains responsible for implementation and applicable project tests. The controller does not run those tests a second time.
 
-## Project-local components
+## Files
 
-- `.pi/extensions/project-harness-feedback-loop/index.ts` — executable project-local Pi controller and `/guarded` input interception
-- `.pi/extensions/project-harness-feedback-loop/commands/guarded.md` — slash-command discovery metadata for Pi autocomplete
-- `.pi/extensions/project-harness-feedback-loop/core.mjs` — deterministic parsing and report formatting
-- `.pi/extensions/project-harness-feedback-loop/config.json` — project marker, requirement paths, checks, limits, and audit settings
-- `.pi/extensions/project-harness-feedback-loop/prompts/task-compiler.md` — interface that makes the coding agent record an explicit task contract
-- `.pi/extensions/project-harness-feedback-loop/prompts/auditor.md` — read-only evaluator instructions
-- `.pi/extensions/project-harness-feedback-loop/evals/` — approved translation regression cases added after confirmed harness findings
-- `docs/requirements.md` — stable requirement IDs pointing to canonical project guidance
+- `index.ts` — intercepts `/guarded`, records evidence, starts the read-only evaluator, and displays its report
+- `commands/guarded.md` — slash-command autocomplete metadata
+- `config.json` — project marker, canonical requirement paths, evaluator settings, and size limits
+- `prompts/interface.md` — small operational interface supplied only to the guarded coding task
+- `prompts/auditor.md` — instructions supplied only to the isolated evaluator
 
-Pi automatically loads `index.ts` from this project-local extension folder after project trust. The controller, not Pi itself, interprets the adjacent config, prompts, and evals. Merely storing prompts or evals consumes no model tokens. Tokens are used only when the controller sends selected content to an LLM.
+Canonical project guidance remains in the project-specific `AGENTS.md`, `docs/architecture.md`, and `docs/testing.md`.
 
-## Verification
+## Project/global boundary
 
-```powershell
-node --test .pi/extensions/project-harness-feedback-loop/core.test.mjs
-python -m pytest
+Pi discovers this extension only from this trusted repository:
+
+```text
+chess-analysis-coach/.pi/extensions/project-harness-feedback-loop/
 ```
 
-After the project files are committed in a clean worktree, `/guarded` provides the real Pi boundary smoke path.
+Nothing is copied to the global extension location:
+
+```text
+C:\Users\Felix\.pi\agent\extensions\
+```
+
+Raw run evidence is ignored under `output/project-harness-feedback-loop/runs/<run-id>/`. Stored files consume no model tokens unless a guarded coding task or evaluator actually reads them.

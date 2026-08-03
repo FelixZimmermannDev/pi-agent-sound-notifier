@@ -5,54 +5,27 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { basename, join, relative, resolve } from "node:path";
 
 import { CONFIG_DIR_NAME, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { Type } from "typebox";
-
-import {
-  extractFinalAssistantText,
-  extractJsonObject,
-  formatAuditReport,
-  normalizeAuditReport,
-  truncateUtf8,
-} from "./core.mjs";
 
 const EXTENSION_FOLDER = "project-harness-feedback-loop";
-const CONTRACT_TOOL = "record_task_contract";
 
 type HarnessConfig = {
   schemaVersion: number;
-  name: string;
   projectId: string;
   projectMarker: { path: string; contains: string };
   requireCleanWorktree: boolean;
   requirementFiles: string[];
-  checks: Array<{ name: string; program: string; args: string[]; timeoutSeconds: number }>;
   audit: { thinkingLevel: string; timeoutSeconds: number; interfaceChanges: string };
-  limits: { maxDiffBytes: number; maxCommandOutputBytes: number; maxUntrackedFileBytes: number };
-};
-
-type RequirementReference = { id: string; source: string; reason: string };
-
-type TaskContract = {
-  goal: string;
-  scope: string[];
-  doneWhen: string[];
-  mustRemainUnchanged: string[];
-  requirements: RequirementReference[];
-  verification: string[];
-  assumptions: string[];
+  limits: { maxDiffBytes: number; maxUntrackedFileBytes: number };
 };
 
 type ActiveTask = {
   id: string;
-  userPrompt: string;
   runDirectory: string;
   runDirectoryRelative: string;
   startHead: string;
   config: HarnessConfig;
-  taskCompilerPrompt: string;
+  interfacePrompt: string;
   input: Record<string, unknown>;
-  contract?: TaskContract;
-  mutationObserved: boolean;
   auditing: boolean;
 };
 
@@ -71,26 +44,30 @@ function sha256(value: string): string {
 }
 
 function createRunId(): string {
-  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-  return `${timestamp}_${randomUUID().slice(0, 8)}`;
+  return `${new Date().toISOString().replace(/[:.]/g, "-")}_${randomUUID().slice(0, 8)}`;
+}
+
+function truncateUtf8(value: string, maxBytes: number): string {
+  if (Buffer.byteLength(value, "utf8") <= maxBytes) return value;
+  let end = Math.min(value.length, maxBytes);
+  while (Buffer.byteLength(value.slice(0, end), "utf8") > maxBytes) end -= 1;
+  return `${value.slice(0, end)}\n\n[truncated by project harness]`;
 }
 
 async function loadConfig(cwd: string): Promise<HarnessConfig> {
-  const path = join(extensionDirectory(cwd), "config.json");
-  const parsed = JSON.parse(await readFile(path, "utf8")) as HarnessConfig;
-  if (parsed.schemaVersion !== 1) throw new Error(`Unsupported harness config schema: ${parsed.schemaVersion}.`);
-  return parsed;
+  const config = JSON.parse(await readFile(join(extensionDirectory(cwd), "config.json"), "utf8")) as HarnessConfig;
+  if (config.schemaVersion !== 1) throw new Error(`Unsupported harness config schema: ${config.schemaVersion}.`);
+  return config;
 }
 
 async function verifyProject(pi: ExtensionAPI, cwd: string, config: HarnessConfig): Promise<void> {
-  const markerPath = join(cwd, config.projectMarker.path);
-  const marker = await readFile(markerPath, "utf8");
+  const marker = await readFile(join(cwd, config.projectMarker.path), "utf8");
   if (!marker.includes(config.projectMarker.contains)) {
-    throw new Error(`Project marker did not match ${config.projectId}: ${config.projectMarker.path}`);
+    throw new Error(`Project marker did not match ${config.projectId}.`);
   }
 
-  const rootResult = await pi.exec("git", ["rev-parse", "--show-toplevel"], { timeout: 10000 });
-  if (rootResult.code !== 0 || !samePath(rootResult.stdout.trim(), cwd)) {
+  const root = await pi.exec("git", ["rev-parse", "--show-toplevel"], { timeout: 10000 });
+  if (root.code !== 0 || !samePath(root.stdout.trim(), cwd)) {
     throw new Error("Run /guarded from the chess-analysis-coach Git root.");
   }
 
@@ -98,9 +75,7 @@ async function verifyProject(pi: ExtensionAPI, cwd: string, config: HarnessConfi
     const status = await pi.exec("git", ["status", "--porcelain", "--untracked-files=all"], { timeout: 10000 });
     if (status.code !== 0) throw new Error("Could not inspect Git worktree status.");
     if (status.stdout.trim()) {
-      throw new Error(
-        "Guarded tasks require a clean worktree so the audit can attribute one diff to one request. Commit, stash, or use a separate worktree first.",
-      );
+      throw new Error("/guarded requires a clean worktree. Commit, stash, or use a separate worktree first.");
     }
   }
 }
@@ -112,10 +87,8 @@ async function snapshotRequirements(
   runDirectory: string,
 ): Promise<Array<{ path: string; sha256: string }>> {
   const sources = new Map<string, string>();
-  for (const contextFile of contextFiles) {
-    if (contextFile?.path && typeof contextFile.content === "string") {
-      sources.set(resolve(contextFile.path), contextFile.content);
-    }
+  for (const file of contextFiles) {
+    if (file?.path && typeof file.content === "string") sources.set(resolve(file.path), file.content);
   }
   for (const configuredPath of config.requirementFiles) {
     const absolutePath = resolve(cwd, configuredPath);
@@ -131,14 +104,8 @@ async function snapshotRequirements(
     metadata.push({ path: displayPath, sha256: sha256(content) });
     sections.push(`\n\n---\n\n# Requirement source: ${displayPath}\n\n${content.trim()}\n`);
   }
-
   await writeFile(join(runDirectory, "requirements-snapshot.md"), sections.join(""), "utf8");
   return metadata;
-}
-
-function setContractToolActive(pi: ExtensionAPI, enabled: boolean): void {
-  const current = pi.getActiveTools().filter((name) => name !== CONTRACT_TOOL);
-  pi.setActiveTools(enabled ? [...current, CONTRACT_TOOL] : current);
 }
 
 async function collectChanges(pi: ExtensionAPI, cwd: string, task: ActiveTask): Promise<string> {
@@ -147,15 +114,14 @@ async function collectChanges(pi: ExtensionAPI, cwd: string, task: ActiveTask): 
   });
   if (tracked.code !== 0) throw new Error(`Could not create task diff: ${tracked.stderr || tracked.stdout}`);
 
-  const untrackedResult = await pi.exec("git", ["ls-files", "--others", "--exclude-standard"], { timeout: 10000 });
-  if (untrackedResult.code !== 0) throw new Error("Could not list untracked files for the task diff.");
+  const untracked = await pi.exec("git", ["ls-files", "--others", "--exclude-standard"], { timeout: 10000 });
+  if (untracked.code !== 0) throw new Error("Could not list untracked files.");
 
   const additions: string[] = [];
-  for (const filePath of untrackedResult.stdout.split(/\r?\n/).filter(Boolean)) {
-    const absolutePath = resolve(cwd, filePath);
+  for (const filePath of untracked.stdout.split(/\r?\n/).filter(Boolean)) {
     let content: Buffer;
     try {
-      content = await readFile(absolutePath);
+      content = await readFile(resolve(cwd, filePath));
     } catch {
       continue;
     }
@@ -164,52 +130,36 @@ async function collectChanges(pi: ExtensionAPI, cwd: string, task: ActiveTask): 
       continue;
     }
     const text = truncateUtf8(content.toString("utf8"), task.config.limits.maxUntrackedFileBytes);
-    const prefixed = text
-      .split("\n")
-      .map((line) => `+${line}`)
-      .join("\n");
-    additions.push(`\n--- /dev/null\n+++ b/${filePath.replaceAll("\\", "/")}\n@@ new file @@\n${prefixed}\n`);
+    additions.push(
+      `\n--- /dev/null\n+++ b/${filePath.replaceAll("\\", "/")}\n@@ new file @@\n${text
+        .split("\n")
+        .map((line) => `+${line}`)
+        .join("\n")}\n`,
+    );
   }
-
   return truncateUtf8(`${tracked.stdout}${additions.join("")}`, task.config.limits.maxDiffBytes);
 }
 
-async function runChecks(pi: ExtensionAPI, task: ActiveTask): Promise<Array<Record<string, unknown>>> {
-  const results: Array<Record<string, unknown>> = [];
-  for (const check of task.config.checks) {
-    const startedAt = Date.now();
-    try {
-      const result = await pi.exec(check.program, check.args, { timeout: check.timeoutSeconds * 1000 });
-      results.push({
-        name: check.name,
-        command: [check.program, ...check.args],
-        exitCode: result.code,
-        durationMs: Date.now() - startedAt,
-        stdout: truncateUtf8(result.stdout, task.config.limits.maxCommandOutputBytes),
-        stderr: truncateUtf8(result.stderr, task.config.limits.maxCommandOutputBytes),
-      });
-    } catch (error) {
-      results.push({
-        name: check.name,
-        command: [check.program, ...check.args],
-        exitCode: null,
-        durationMs: Date.now() - startedAt,
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
+function latestAssistantText(ctx: { sessionManager: { getBranch(): any[] } }): string {
+  const entries = ctx.sessionManager.getBranch();
+  for (let index = entries.length - 1; index >= 0; index -= 1) {
+    const entry = entries[index];
+    if (entry.type !== "message" || entry.message?.role !== "assistant") continue;
+    return (entry.message.content ?? [])
+      .filter((part: any) => part?.type === "text")
+      .map((part: any) => part.text)
+      .join("\n")
+      .trim();
   }
-  return results;
+  return "[No final implementation summary was recorded.]";
 }
 
 function getPiInvocation(args: string[]): { command: string; args: string[] } {
   const currentScript = process.argv[1];
-  const isBunVirtualScript = currentScript?.startsWith("/$bunfs/root/");
-  if (currentScript && !isBunVirtualScript && existsSync(currentScript)) {
+  if (currentScript && !currentScript.startsWith("/$bunfs/root/") && existsSync(currentScript)) {
     return { command: process.execPath, args: [currentScript, ...args] };
   }
-
-  const executable = basename(process.execPath).toLowerCase();
-  const genericRuntime = /^(node|bun)(\.exe)?$/.test(executable);
+  const genericRuntime = /^(node|bun)(\.exe)?$/.test(basename(process.execPath).toLowerCase());
   return genericRuntime ? { command: "pi", args } : { command: process.execPath, args };
 }
 
@@ -231,16 +181,9 @@ async function runPiProcess(cwd: string, args: string[], timeoutMs: number): Pro
       child.kill("SIGTERM");
       setTimeout(() => child.kill("SIGKILL"), 5000).unref();
     }, timeoutMs);
-
-    child.stdout.on("data", (chunk) => {
-      stdout += chunk.toString();
-    });
-    child.stderr.on("data", (chunk) => {
-      stderr += chunk.toString();
-    });
-    child.on("error", (error) => {
-      stderr += `\n${error.message}`;
-    });
+    child.stdout.on("data", (chunk) => (stdout += chunk.toString()));
+    child.stderr.on("data", (chunk) => (stderr += chunk.toString()));
+    child.on("error", (error) => (stderr += `\n${error.message}`));
     child.on("close", (code) => {
       clearTimeout(timer);
       resolvePromise({ code: code ?? 1, stdout, stderr, timedOut });
@@ -248,118 +191,58 @@ async function runPiProcess(cwd: string, args: string[], timeoutMs: number): Pro
   });
 }
 
-async function evaluateTask(cwd: string, task: ActiveTask): Promise<Record<string, unknown>> {
+async function evaluateTask(cwd: string, task: ActiveTask): Promise<string> {
   const auditorPrompt = await readFile(join(extensionDirectory(cwd), "prompts", "auditor.md"), "utf8");
   const modelArgs: string[] = [];
   if (process.env.PI_PROVIDER && process.env.PI_MODEL) {
     modelArgs.push("--provider", process.env.PI_PROVIDER, "--model", process.env.PI_MODEL);
   }
-
   const taskPrompt = [
-    `Audit the guarded run stored in ${task.runDirectoryRelative.replaceAll("\\", "/")}.`,
-    "Read input.json, effective-system-prompt.md, requirements-snapshot.md, task-contract.json, changes.patch, and checks.json.",
-    "Then inspect only directly relevant source and test files when evidence needs confirmation.",
-    "Return exactly the JSON object required by your evaluator instructions.",
+    `Evaluate the guarded run in ${task.runDirectoryRelative.replaceAll("\\", "/")}.`,
+    "Read input.json, effective-system-prompt.md, requirements-snapshot.md, changes.patch, and implementation-summary.md.",
+    "Inspect only directly relevant current source and test files when confirmation is needed.",
   ].join("\n");
-
-  const args = [
-    "--mode",
-    "json",
-    "-p",
-    "--no-session",
-    "--no-extensions",
-    "--no-skills",
-    "--no-prompt-templates",
-    "--no-context-files",
-    "--tools",
-    "read,grep,find,ls",
-    "--thinking",
-    task.config.audit.thinkingLevel,
-    "--append-system-prompt",
-    auditorPrompt,
-    ...modelArgs,
-    taskPrompt,
-  ];
-
-  const result = await runPiProcess(cwd, args, task.config.audit.timeoutSeconds * 1000);
-  await writeFile(join(task.runDirectory, "audit-process.json"), JSON.stringify(result, null, 2), "utf8");
-  if (result.code !== 0 || result.timedOut) {
-    throw new Error(
-      result.timedOut
-        ? "Harness evaluator timed out."
-        : `Harness evaluator exited with code ${result.code}: ${result.stderr.trim() || "no stderr"}`,
-    );
+  const result = await runPiProcess(
+    cwd,
+    [
+      "-p",
+      "--no-session",
+      "--no-extensions",
+      "--no-skills",
+      "--no-prompt-templates",
+      "--no-context-files",
+      "--tools",
+      "read,grep,find,ls",
+      "--thinking",
+      task.config.audit.thinkingLevel,
+      "--append-system-prompt",
+      auditorPrompt,
+      ...modelArgs,
+      taskPrompt,
+    ],
+    task.config.audit.timeoutSeconds * 1000,
+  );
+  await writeFile(
+    join(task.runDirectory, "audit-process.json"),
+    JSON.stringify({ code: result.code, stderr: result.stderr, timedOut: result.timedOut }, null, 2),
+    "utf8",
+  );
+  if (result.code !== 0 || result.timedOut || !result.stdout.trim()) {
+    throw new Error(result.timedOut ? "Evaluator timed out." : result.stderr.trim() || "Evaluator returned no report.");
   }
-
-  const finalText = extractFinalAssistantText(result.stdout);
-  await writeFile(join(task.runDirectory, "audit-raw.txt"), finalText || result.stdout, "utf8");
-  return normalizeAuditReport(extractJsonObject(finalText));
+  return result.stdout.trim();
 }
 
 export default function projectHarnessFeedbackLoop(pi: ExtensionAPI) {
   let activeTask: ActiveTask | undefined;
 
-  pi.registerTool({
-    name: CONTRACT_TOOL,
-    label: "Record Task Contract",
-    description: "Record the explicit requirement-grounded contract for the active project-local guarded task before editing files.",
-    parameters: Type.Object({
-      goal: Type.String({ description: "Single concrete goal" }),
-      scope: Type.Array(Type.String(), { description: "Bounded implementation scope" }),
-      doneWhen: Type.Array(Type.String(), { description: "Observable completion conditions" }),
-      mustRemainUnchanged: Type.Array(Type.String(), { description: "Behavior, state, and boundaries that must remain unchanged" }),
-      requirements: Type.Array(
-        Type.Object({
-          id: Type.String({ description: "Stable requirement ID" }),
-          source: Type.String({ description: "Canonical source path or section" }),
-          reason: Type.String({ description: "Why this requirement constrains the task" }),
-        }),
-      ),
-      verification: Type.Array(Type.String(), { description: "Focused, full-suite, and real-boundary checks as applicable" }),
-      assumptions: Type.Array(Type.String(), { description: "Low-risk assumptions used by the implementation" }),
-    }),
-    async execute(_toolCallId, params) {
-      if (!activeTask) throw new Error("No active /guarded task.");
-      if (activeTask.mutationObserved) throw new Error("Record the task contract before modifying project files.");
-
-      const contract: TaskContract = {
-        goal: params.goal,
-        scope: [...params.scope],
-        doneWhen: [...params.doneWhen],
-        mustRemainUnchanged: [...params.mustRemainUnchanged],
-        requirements: params.requirements.map((requirement) => ({ ...requirement })),
-        verification: [...params.verification],
-        assumptions: [...params.assumptions],
-      };
-      activeTask.contract = contract;
-      await writeFile(join(activeTask.runDirectory, "task-contract.json"), JSON.stringify(contract, null, 2), "utf8");
-      return {
-        content: [{ type: "text", text: `Recorded guarded task contract ${activeTask.id}.` }],
-        details: { taskId: activeTask.id, contract },
-      };
-    },
-  });
-
   pi.on("session_start", () => {
     activeTask = undefined;
-    setContractToolActive(pi, false);
   });
 
   pi.on("resources_discover", (event) => ({
     promptPaths: [join(extensionDirectory(event.cwd), "commands")],
   }));
-
-  pi.on("tool_call", (event) => {
-    if (!activeTask || activeTask.auditing) return;
-    if (event.toolName !== "edit" && event.toolName !== "write") return;
-    if (!activeTask.contract) {
-      return {
-        block: true,
-        reason: "The active /guarded task requires record_task_contract before edit or write.",
-      };
-    }
-    activeTask.mutationObserved = true;
-  });
 
   pi.on("before_agent_start", async (event) => {
     if (!activeTask || activeTask.auditing) return;
@@ -371,12 +254,7 @@ export default function projectHarnessFeedbackLoop(pi: ExtensionAPI) {
       activeTask.runDirectory,
     );
     await writeFile(join(activeTask.runDirectory, "input.json"), JSON.stringify(activeTask.input, null, 2), "utf8");
-    const requirementList = activeTask.config.requirementFiles.map((path) => `- ${path}`).join("\n");
-    const addition = [
-      activeTask.taskCompilerPrompt,
-      `\n## Active guarded run\n\nRun ID: ${activeTask.id}\n\nRequirement files:\n${requirementList}`,
-    ].join("\n");
-    const effectivePrompt = `${event.systemPrompt}\n\n${addition}`;
+    const effectivePrompt = `${event.systemPrompt}\n\n${activeTask.interfacePrompt}`;
     await writeFile(join(activeTask.runDirectory, "effective-system-prompt.md"), effectivePrompt, "utf8");
     return { systemPrompt: effectivePrompt };
   });
@@ -385,77 +263,53 @@ export default function projectHarnessFeedbackLoop(pi: ExtensionAPI) {
     if (!activeTask || activeTask.auditing) return;
     const task = activeTask;
     task.auditing = true;
-    ctx.ui.setStatus("project-harness-feedback-loop", "auditing guarded task…");
-
+    ctx.ui.setStatus(EXTENSION_FOLDER, "double-checking requirements…");
     try {
-      if (!task.contract) {
-        await writeFile(
-          join(task.runDirectory, "task-contract.json"),
-          JSON.stringify({ error: "Coding agent did not record a task contract." }, null, 2),
-          "utf8",
-        );
-      }
-
       const changes = await collectChanges(pi, ctx.cwd, task);
       await writeFile(join(task.runDirectory, "changes.patch"), changes || "[no project changes detected]\n", "utf8");
-      const checks = await runChecks(pi, task);
-      await writeFile(join(task.runDirectory, "checks.json"), JSON.stringify(checks, null, 2), "utf8");
-
-      let report: ReturnType<typeof normalizeAuditReport>;
+      await writeFile(join(task.runDirectory, "implementation-summary.md"), latestAssistantText(ctx), "utf8");
+      let report: string;
       try {
-        report = (await evaluateTask(ctx.cwd, task)) as ReturnType<typeof normalizeAuditReport>;
+        report = await evaluateTask(ctx.cwd, task);
       } catch (error) {
-        report = normalizeAuditReport({
-          translation: { verdict: "unclear", findings: [] },
-          implementation: { verdict: "unclear", findings: [] },
-          rootCause: "CHECKER",
-          summary: `The independent evaluator could not complete: ${error instanceof Error ? error.message : String(error)}`,
-          interfaceImprovement: null,
-        });
+        report = `Verdict: CHECKER\n\nRequirements check:\n- Independent evaluator failed: ${
+          error instanceof Error ? error.message : String(error)
+        }\n\nInterface diagnosis:\n- No reliable diagnosis available.\n\nOptional interface improvement:\n- None`;
       }
-      await writeFile(join(task.runDirectory, "audit.json"), JSON.stringify(report, null, 2), "utf8");
-
-      const display = formatAuditReport(report, task.runDirectoryRelative.replaceAll("\\", "/"));
+      await writeFile(join(task.runDirectory, "audit.md"), report, "utf8");
       activeTask = undefined;
-      setContractToolActive(pi, false);
       pi.sendMessage({
         customType: "project-harness-audit",
-        content: display,
+        content: `${report}\n\nEvidence: ${task.runDirectoryRelative.replaceAll("\\", "/")}`,
         display: true,
-        details: { taskId: task.id, report, evidencePath: task.runDirectoryRelative },
+        details: { taskId: task.id, evidencePath: task.runDirectoryRelative },
       });
-      ctx.ui.notify(`Guarded audit completed: ${report.rootCause}`, report.rootCause === "PASS" ? "info" : "warning");
+      const verdict = report.match(/^Verdict:\s*([A-Z]+)/m)?.[1] ?? "CHECKER";
+      ctx.ui.notify(`Guarded double-check completed: ${verdict}`, verdict === "PASS" ? "info" : "warning");
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       await writeFile(join(task.runDirectory, "harness-error.txt"), message, "utf8").catch(() => undefined);
       activeTask = undefined;
-      setContractToolActive(pi, false);
       ctx.ui.notify(`Project harness failed: ${message}`, "error");
     } finally {
-      ctx.ui.setStatus("project-harness-feedback-loop", undefined);
+      ctx.ui.setStatus(EXTENSION_FOLDER, undefined);
     }
   });
 
   pi.on("session_shutdown", () => {
     activeTask = undefined;
-    setContractToolActive(pi, false);
   });
 
   pi.on("input", async (event, ctx) => {
     const match = event.text.match(/^\/guarded(?:\s+([\s\S]*))?$/);
     if (!match) return { action: "continue" };
-
     const userPrompt = (match[1] ?? "").trim();
     if (!userPrompt) {
       ctx.ui.notify("Usage: /guarded <implementation request>", "warning");
       return { action: "handled" };
     }
-    if (!ctx.isIdle()) {
-      ctx.ui.notify("Wait for the current agent run to settle before starting /guarded.", "warning");
-      return { action: "handled" };
-    }
-    if (activeTask) {
-      ctx.ui.notify(`Guarded task ${activeTask.id} is already active.`, "warning");
+    if (!ctx.isIdle() || activeTask) {
+      ctx.ui.notify("Wait for the current guarded task to settle first.", "warning");
       return { action: "handled" };
     }
     if (!ctx.isProjectTrusted()) {
@@ -466,45 +320,37 @@ export default function projectHarnessFeedbackLoop(pi: ExtensionAPI) {
     try {
       const config = await loadConfig(ctx.cwd);
       await verifyProject(pi, ctx.cwd, config);
-      const startHeadResult = await pi.exec("git", ["rev-parse", "HEAD"], { timeout: 10000 });
-      if (startHeadResult.code !== 0) throw new Error("Could not capture the starting Git revision.");
-
+      const head = await pi.exec("git", ["rev-parse", "HEAD"], { timeout: 10000 });
+      if (head.code !== 0) throw new Error("Could not capture the starting Git revision.");
       const id = createRunId();
-      const runDirectory = join(ctx.cwd, "output", "project-harness-feedback-loop", "runs", id);
+      const runDirectory = join(ctx.cwd, "output", EXTENSION_FOLDER, "runs", id);
       await mkdir(runDirectory, { recursive: true });
-      const taskCompilerPrompt = await readFile(join(extensionDirectory(ctx.cwd), "prompts", "task-compiler.md"), "utf8");
       const input: Record<string, unknown> = {
         schemaVersion: 1,
         taskId: id,
         projectId: config.projectId,
         originalUserPrompt: userPrompt,
         startedAt: new Date().toISOString(),
-        startHead: startHeadResult.stdout.trim(),
+        startHead: head.stdout.trim(),
         model: ctx.model ? { provider: ctx.model.provider, id: ctx.model.id } : null,
-        thinkingLevel: ctx.thinkingLevel,
         requirementSources: [],
-        correctionPolicy: config.audit.interfaceChanges,
+        interfaceChanges: config.audit.interfaceChanges,
       };
-      await writeFile(join(runDirectory, "input.json"), JSON.stringify(input, null, 2), "utf8");
-
       activeTask = {
         id,
-        userPrompt,
         runDirectory,
         runDirectoryRelative: relative(ctx.cwd, runDirectory),
-        startHead: startHeadResult.stdout.trim(),
+        startHead: head.stdout.trim(),
         config,
-        taskCompilerPrompt,
+        interfacePrompt: await readFile(join(extensionDirectory(ctx.cwd), "prompts", "interface.md"), "utf8"),
         input,
-        mutationObserved: false,
         auditing: false,
       };
-      setContractToolActive(pi, true);
+      await writeFile(join(runDirectory, "input.json"), JSON.stringify(input, null, 2), "utf8");
       ctx.ui.notify(`Started guarded task ${id}.`, "info");
       return { action: "transform", text: userPrompt };
     } catch (error) {
       activeTask = undefined;
-      setContractToolActive(pi, false);
       ctx.ui.notify(error instanceof Error ? error.message : String(error), "error");
       return { action: "handled" };
     }
