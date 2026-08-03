@@ -29,6 +29,7 @@ const botEloValue = document.querySelector("#bot-elo-value");
 const coachMaxStrength = document.querySelector("#coach-max-strength");
 const coachEloSlider = document.querySelector("#coach-elo-slider");
 const coachEloValue = document.querySelector("#coach-elo-value");
+const engineBudgetNote = document.querySelector("#engine-budget-note");
 
 let gameState = null;
 let selectedSquare = null;
@@ -456,7 +457,7 @@ function renderPlayers() {
   document.querySelector("#bottom-player-detail").textContent = playerIsWhite ? "Weiß" : "Schwarz";
   document.querySelector("#top-player-name").textContent = "Stockfish";
   const opponentColor = playerIsWhite ? "Schwarz" : "Weiß";
-  document.querySelector("#top-player-detail").textContent = `${opponentColor} · Stockfish Elo ${gameState.bot_elo}`;
+  document.querySelector("#top-player-detail").textContent = `${opponentColor} · UCI-Ziel ${gameState.bot_elo}`;
 }
 
 function renderEvaluationBar() {
@@ -493,7 +494,7 @@ function renderRecommendationSettings() {
     button.disabled = gameState.started || requestInProgress;
   });
   botEloSlider.value = selectedBotElo;
-  botEloValue.textContent = `${selectedBotElo} Elo`;
+  botEloValue.textContent = `UCI-Ziel ${selectedBotElo}`;
   botEloSlider.disabled = gameState.started || requestInProgress;
 
   const coachUsesMaximum = selectedCoachElo == null;
@@ -505,7 +506,12 @@ function renderRecommendationSettings() {
   );
   coachEloValue.textContent = coachUsesMaximum
     ? "Maximal"
-    : `${selectedCoachElo} Elo`;
+    : `UCI-Ziel ${selectedCoachElo}`;
+
+  const equalBudgets = gameState.coach_time_ms === gameState.bot_time_ms;
+  engineBudgetNote.textContent = equalBudgets
+    ? `Gleiches Budget für die Hauptzugauswahl: Coach und Gegner jeweils ${gameState.coach_time_ms} ms. Weitere Coach-Kandidaten und ihre Erklärungen rechnen zusätzlich, ändern den gewählten Hauptzug aber nicht.`
+    : `Unterschiedliche Budgets für die Hauptzugauswahl: Coach ${gameState.coach_time_ms} ms, Gegner ${gameState.bot_time_ms} ms. Für direkte Vergleiche beim Start dieselben CLI-Zeiten verwenden.`;
 }
 
 function renderForecastControls() {
@@ -581,26 +587,27 @@ function renderStatus() {
 function renderRecommendations() {
   recommendationsElement.replaceChildren();
   const coachState = document.querySelector("#coach-state");
+  const strengthLabel = selectedCoachElo == null ? "Max" : `UCI ${selectedCoachElo}`;
   if (!gameState.started) {
-    coachState.textContent = "Wartet";
+    coachState.textContent = `${strengthLabel} · Wartet`;
     coachState.className = "state-pill";
     recommendationsElement.append(emptyMessage("Nach dem Start erscheinen hier Kandidaten und taktische Hinweise."));
     return;
   }
   if (gameState.game_over) {
-    coachState.textContent = "Beendet";
+    coachState.textContent = `${strengthLabel} · Beendet`;
     coachState.className = "state-pill";
     recommendationsElement.append(emptyMessage("Die Live-Analyse ist beendet. Die PGN-Aufzeichnung steht zum Download bereit."));
     return;
   }
   if (!gameState.is_player_turn || gameState.recommendation.length === 0) {
-    coachState.textContent = "Analysiert";
+    coachState.textContent = `${strengthLabel} · Analysiert`;
     coachState.className = "state-pill";
     recommendationsElement.append(emptyMessage("Empfehlungen werden nur für deinen Zug angezeigt."));
     return;
   }
 
-  coachState.textContent = "Bereit";
+  coachState.textContent = `${strengthLabel} · Bereit`;
   coachState.className = "state-pill ready";
   gameState.recommendation.forEach(candidate => {
     const rankStyle = Math.min(candidate.rank, 3);
@@ -777,7 +784,7 @@ function hideError() {
 botEloSlider.addEventListener("input", () => {
   if (gameState?.started || requestInProgress) return;
   selectedBotElo = Number(botEloSlider.value);
-  botEloValue.textContent = `${selectedBotElo} Elo`;
+  botEloValue.textContent = `UCI-Ziel ${selectedBotElo}`;
 });
 
 coachMaxStrength.addEventListener("change", () => {
@@ -790,7 +797,7 @@ coachEloSlider.addEventListener("input", () => {
   if (gameState?.started || requestInProgress || coachMaxStrength.checked) return;
   limitedCoachElo = Number(coachEloSlider.value);
   selectedCoachElo = limitedCoachElo;
-  coachEloValue.textContent = `${selectedCoachElo} Elo`;
+  coachEloValue.textContent = `UCI-Ziel ${selectedCoachElo}`;
 });
 
 forecastModeButtons.forEach(button => {

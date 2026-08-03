@@ -13,6 +13,8 @@ class FakeUciEngine:
         self.received_fen: str | None = None
         self.received_limit: chess.engine.Limit | None = None
         self.received_multipv: int | None = None
+        self.received_analysis_root_moves: list[chess.Move] | None = None
+        self.received_play_root_moves: list[chess.Move] | None = None
         self.configurations: list[dict[str, object]] = []
         self.move_to_play: chess.Move | None = None
         self.quit_called = False
@@ -26,19 +28,24 @@ class FakeUciEngine:
         limit: chess.engine.Limit,
         *,
         multipv: int,
+        root_moves: list[chess.Move] | None = None,
     ) -> list[chess.engine.InfoDict]:
         self.received_fen = board.fen()
         self.received_limit = limit
         self.received_multipv = multipv
+        self.received_analysis_root_moves = root_moves
         return self.analysis
 
     def play(
         self,
         board: chess.Board,
         limit: chess.engine.Limit,
+        *,
+        root_moves: list[chess.Move] | None = None,
     ) -> chess.engine.PlayResult:
         self.received_fen = board.fen()
         self.received_limit = limit
+        self.received_play_root_moves = root_moves
         return chess.engine.PlayResult(self.move_to_play, None)
 
     def quit(self) -> None:
@@ -83,6 +90,38 @@ def test_stockfish_adapter_transforms_ranked_uci_analysis_and_closes_engine() ->
     assert fake_engine.received_multipv == 3
     assert fake_engine.configurations == [{"UCI_LimitStrength": False}]
     assert fake_engine.quit_called
+
+
+def test_limited_coach_analyzes_stockfishs_elo_selected_move() -> None:
+    board = chess.Board()
+    d4 = chess.Move.from_uci("d2d4")
+    d5 = chess.Move.from_uci("d7d5")
+    fake_engine = FakeUciEngine(
+        [
+            {
+                "multipv": 1,
+                "score": chess.engine.PovScore(chess.engine.Cp(20), chess.WHITE),
+                "pv": [d4, d5],
+            }
+        ]
+    )
+    fake_engine.move_to_play = d4
+
+    with StockfishAnalyzer("stockfish-test", engine_factory=lambda _: fake_engine) as analyzer:
+        candidates = analyzer.analyze(
+            board,
+            time_limit_seconds=0.1,
+            candidate_count=1,
+            strength_elo=1400,
+        )
+
+    assert [candidate.uci for candidate in candidates] == ["d2d4"]
+    assert fake_engine.received_play_root_moves is not None
+    assert set(fake_engine.received_play_root_moves) == set(board.legal_moves)
+    assert fake_engine.received_analysis_root_moves == [d4]
+    assert fake_engine.configurations == [
+        {"UCI_LimitStrength": True, "UCI_Elo": 1400}
+    ]
 
 
 def test_stockfish_adapter_chooses_a_move_at_selected_elo_without_mutating_board() -> None:

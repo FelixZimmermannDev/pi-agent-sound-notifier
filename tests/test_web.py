@@ -72,6 +72,8 @@ def test_local_web_api_serves_page_and_one_complete_turn() -> None:
     assert 'id="bot-elo-slider"' in page.get_data(as_text=True)
     assert 'id="coach-max-strength"' in page.get_data(as_text=True)
     assert 'id="coach-elo-slider"' in page.get_data(as_text=True)
+    assert 'id="engine-budget-note"' in page.get_data(as_text=True)
+    assert "UCI-Ziel 1500" in page.get_data(as_text=True)
 
     stylesheet = client.get("/static/app.css")
     assert stylesheet.status_code == 200
@@ -88,6 +90,8 @@ def test_local_web_api_serves_page_and_one_complete_turn() -> None:
     assert started.status_code == 200
     assert started.get_json()["recommendation"][0]["uci"] == "e2e4"
     assert started.get_json()["evaluation_bar"]["white_percent"] > 50
+    assert started.get_json()["coach_time_ms"] == 50
+    assert started.get_json()["bot_time_ms"] == 50
 
     moved = client.post("/api/game/move", json={"move": "e2e4"})
     player_payload = moved.get_json()

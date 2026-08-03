@@ -133,6 +133,8 @@ class WebGameView:
     candidate_count: int
     bot_elo: int
     coach_elo: int | None
+    coach_time_ms: int
+    bot_time_ms: int
     turn: str
     started: bool
     game_over: bool
@@ -352,6 +354,8 @@ class LocalWebGame:
             candidate_count=self._settings.candidate_count,
             bot_elo=self._settings.bot_elo,
             coach_elo=self._settings.coach_elo,
+            coach_time_ms=round(self._settings.coach_time_seconds * 1000),
+            bot_time_ms=round(self._settings.bot_time_seconds * 1000),
             turn=_color_name(board.turn),
             started=self._started,
             game_over=game_over,

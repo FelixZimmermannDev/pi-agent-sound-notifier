@@ -93,9 +93,9 @@
         </fieldset>
         <fieldset id="opponent-setting" class="opponent-setting">
           <legend>Lokaler Stockfish-Gegner</legend>
-          <label for="bot-elo-slider">Spielstärke <output id="bot-elo-value" for="bot-elo-slider">1500 Elo</output></label>
+          <label for="bot-elo-slider">Spielstärke <output id="bot-elo-value" for="bot-elo-slider">UCI-Ziel 1500</output></label>
           <input id="bot-elo-slider" type="range" min="1320" max="3190" step="10" value="1500">
-          <p>Dieser Wert steuert nur den Gegner in der lokalen Partie, nicht die Coach-Stärke.</p>
+          <p>Der exakte Wert wird an Stockfish übergeben. Er ist ein statistischer UCI-Zielwert, keine Garantie für eine einzelne Partie.</p>
         </fieldset>
         <fieldset id="coach-strength-setting" class="opponent-setting coach-strength-setting">
           <legend>Stockfish-Coach</legend>
@@ -105,8 +105,9 @@
           </label>
           <label for="coach-elo-slider">Begrenzte Stärke <output id="coach-elo-value" for="coach-elo-slider">Maximal</output></label>
           <input id="coach-elo-slider" type="range" min="1320" max="3190" step="10" value="1800" disabled>
-          <p>Der Coach berechnet Empfehlungen und Zugqualität unabhängig von der lokalen Gegnerstärke.</p>
+          <p>Der begrenzte Coach verwendet dieselbe Elo-Zugauswahl wie der Gegner. Beide erhalten standardmäßig dasselbe Rechenbudget pro Zug.</p>
         </fieldset>
+        <p id="engine-budget-note" class="engine-budget-note">Rechenbudget wird geladen …</p>
         <div class="button-row">
           <button id="start-button" class="primary-button" type="button">Partie starten</button>
           <button id="reset-button" class="secondary-button" type="button">Neue Partie</button>

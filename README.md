@@ -32,7 +32,7 @@ Stockfish 18 was discovered from the local winget installation and verified with
 
 Live recommendations are supported only for local solo/computer practice or explicitly agreed assisted training. This project does not inspect active chess websites, read chess-site screens, automate browsers, or secretly assist in competitive games against another person. Completed online games may later be retrieved through documented public endpoints for post-game review.
 
-An online game being “unranked” does not by itself permit engine assistance. A future online integration would require an explicit platform-supported assisted/bot mode and documented interface; it will not be implemented through scraping or hidden automation.
+An online game being “unranked” does not by itself permit engine assistance. A future online integration would require an explicit platform-supported assisted/bot mode and documented interface; it will not be implemented through scraping or hidden automation. An external platform's advertised bot rating will be recorded as platform-specific metadata, not assumed to equal Stockfish's UCI target without empirical calibration.
 
 ## Setup with PyCharm on Windows
 
@@ -107,7 +107,9 @@ python -m chess_analysis_coach play `
   --candidates 3
 ```
 
-Stockfish 18 exposes accurate UCI Elo selection from **1320 through 3190**. The coach and opponent strengths are separate: the opponent uses `--bot-elo`; the coach is full strength unless `--coach-elo` is supplied.
+Stockfish 18 accepts UCI Elo target values from **1320 through 3190**. These are statistical strength targets rather than guarantees for one game, and effective play also depends on engine version, hardware, and thinking time. The coach and opponent strengths are separate: the opponent uses `--bot-elo`; the coach is full strength unless `--coach-elo` is supplied. For a fair local comparison, give both the same target and the same `--time-ms`/`--bot-time-ms` budget. Both default to 250 ms.
+
+A limited coach now obtains its displayed root move through the same Elo-limited Stockfish `bestmove` selection used by the opponent. It then analyzes only that selected move to provide an evaluation and short continuation; this explanatory pass cannot replace the chosen move with a full-strength principal variation.
 
 During play, enter:
 
@@ -138,7 +140,7 @@ Example with a five-minute clock and three-second increment:
   --increment-seconds 3
 ```
 
-The application binds to `http://127.0.0.1:8765`. Use `--no-browser` to suppress automatic browser opening or `--port 9000` to select another local port. Before clicking **Partie starten**, choose one, two, or three recommendations, set the local opponent from 1320 to 3190 UCI Elo, and choose either maximum coach strength or a separately limited coach from 1320 to 3190 Elo. One candidate, a 1500-Elo opponent, and maximum coach strength are the defaults. These settings lock during the game. Then click a piece and destination or drag the piece directly. The evaluation bar always treats positive values as a White advantage, independent of whose turn it is. Selecting a recommendation card emphasizes its matching arrow. The **Gegner-Counter** and **Eigene Fortsetzung** controls remain available during play and determine whether no, only relevant, or all short forecast arrows and details are visible.
+The application binds to `http://127.0.0.1:8765`. Use `--no-browser` to suppress automatic browser opening or `--port 9000` to select another local port. Before clicking **Partie starten**, choose one, two, or three recommendations, set the local opponent from 1320 to 3190 UCI Elo, and choose either maximum coach strength or a separately limited coach from 1320 to 3190 Elo. The page labels limited values as UCI targets and displays the actual coach/opponent calculation budgets. One candidate, a 1500-Elo opponent, maximum coach strength, and equal 250 ms budgets are the defaults. These settings lock during the game. Then click a piece and destination or drag the piece directly. The evaluation bar always treats positive values as a White advantage, independent of whose turn it is. Selecting a recommendation card emphasizes its matching arrow. The **Gegner-Counter** and **Eigene Fortsetzung** controls remain available during play and determine whether no, only relevant, or all short forecast arrows and details are visible.
 
 After submitting a normal move, the browser receives the intermediate bot-turn position. While the bounded bot request runs, click or drag one blue premove; press `Escape` to cancel it. The move is checked against the actual resulting position and is discarded with a message if it became illegal.
 

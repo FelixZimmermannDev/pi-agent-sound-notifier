@@ -70,7 +70,7 @@ Tests normally add value for:
 - server-authoritative countdown, increment, timeout behavior, and exclusion of coach-only analysis overhead;
 - split player/bot API coordination, legal premove candidates, rejected-state preservation, and incremental annotated PGN recording;
 - SAN/UCI principal-variation preservation, phase classification, tactical relevance, and bounded forecast summaries;
-- engine startup, failure handling, limits, and shutdown;
+- engine startup, failure handling, limits, shutdown, and Elo-limited coach root selection rather than unrestricted analysis-PV leakage;
 - bug fixes and regressions.
 
 Tests normally do not add value for documentation-only changes, formatting, empty scaffolding, or direct behavior-free configuration.

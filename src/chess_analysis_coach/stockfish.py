@@ -24,12 +24,15 @@ class _UciEngine(Protocol):
         limit: chess.engine.Limit,
         *,
         multipv: int,
+        root_moves: list[chess.Move] | None = None,
     ) -> chess.engine.InfoDict | list[chess.engine.InfoDict]: ...
 
     def play(
         self,
         board: chess.Board,
         limit: chess.engine.Limit,
+        *,
+        root_moves: list[chess.Move] | None = None,
     ) -> chess.engine.PlayResult: ...
 
     def quit(self) -> None: ...
@@ -91,16 +94,33 @@ class StockfishAnalyzer:
         multipv = min(candidate_count, board.legal_moves.count())
         try:
             self._configure_strength(engine, strength_elo)
+            limited_root_moves = (
+                self._choose_limited_root_moves(
+                    engine,
+                    board,
+                    time_limit_seconds=time_limit_seconds,
+                    candidate_count=multipv,
+                )
+                if strength_elo is not None
+                else None
+            )
             raw_analysis = engine.analyse(
                 board,
                 chess.engine.Limit(time=time_limit_seconds),
                 multipv=multipv,
+                root_moves=limited_root_moves,
             )
         except (OSError, TimeoutError, chess.engine.EngineError) as error:
             raise EngineAnalysisError(f"Stockfish analysis failed: {error}") from error
 
         analysis_lines = raw_analysis if isinstance(raw_analysis, list) else [raw_analysis]
-        analysis_lines.sort(key=lambda info: int(info.get("multipv", 1)))
+        if limited_root_moves is None:
+            analysis_lines.sort(key=lambda info: int(info.get("multipv", 1)))
+        else:
+            analysis_lines = _order_lines_by_selected_moves(
+                analysis_lines,
+                limited_root_moves,
+            )
         return tuple(
             _candidate_from_info(board, info, line_number=index)
             for index, info in enumerate(analysis_lines, start=1)
@@ -128,6 +148,33 @@ class StockfishAnalyzer:
             raise EngineAnalysisError("Stockfish did not return a legal opponent move.")
         return play_result.move
 
+    @staticmethod
+    def _choose_limited_root_moves(
+        engine: _UciEngine,
+        board: chess.Board,
+        *,
+        time_limit_seconds: float,
+        candidate_count: int,
+    ) -> list[chess.Move]:
+        """Ask Stockfish's Elo limiter to select each displayed root move."""
+        remaining_moves = list(board.legal_moves)
+        selected_moves: list[chess.Move] = []
+        limit = chess.engine.Limit(time=time_limit_seconds)
+        for _ in range(candidate_count):
+            play_result = engine.play(
+                board.copy(stack=True),
+                limit,
+                root_moves=remaining_moves.copy(),
+            )
+            move = play_result.move
+            if move is None or move not in remaining_moves:
+                raise EngineAnalysisError(
+                    "Stockfish did not return a legal limited-strength candidate."
+                )
+            selected_moves.append(move)
+            remaining_moves.remove(move)
+        return selected_moves
+
     def _require_running_engine(self) -> _UciEngine:
         if self._engine is None:
             raise EngineAnalysisError("Stockfish must be started before requesting analysis.")
@@ -148,6 +195,23 @@ class StockfishAnalyzer:
                 "UCI_Elo": strength_elo,
             }
         )
+
+
+def _order_lines_by_selected_moves(
+    analysis_lines: list[chess.engine.InfoDict],
+    selected_moves: list[chess.Move],
+) -> list[chess.engine.InfoDict]:
+    lines_by_root = {
+        variation[0]: info
+        for info in analysis_lines
+        if (variation := info.get("pv"))
+    }
+    try:
+        return [lines_by_root[move] for move in selected_moves]
+    except KeyError as error:
+        raise EngineAnalysisError(
+            "Stockfish did not analyze every limited-strength candidate."
+        ) from error
 
 
 def _candidate_from_info(

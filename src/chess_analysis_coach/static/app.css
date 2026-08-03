@@ -680,6 +680,13 @@ h2 {
   line-height: 1.35;
 }
 
+.engine-budget-note {
+  margin: 9px 2px 0;
+  color: var(--muted);
+  font-size: 0.7rem;
+  line-height: 1.4;
+}
+
 .button-row {
   display: flex;
   flex-wrap: wrap;
