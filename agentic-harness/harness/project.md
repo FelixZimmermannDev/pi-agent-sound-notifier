@@ -30,7 +30,7 @@ Am Projektroot:
 - `npm install` — Abhängigkeiten installiert.
 - `npm test` — PASS: 2 Unit-Tests.
 - `npm run typecheck` — PASS: TypeScript-Prüfung.
-- `pi install "$(pwd)"` — persönliche Pi-Installation ausgeführt; `pi list` zeigt das Paket `../../Code/python/chess-coach`.
+- `pi install "$(pwd)"` — persönliche Pi-Installation ausgeführt; `pi list` zeigt das Paket `../../Code/python/pi-agent-sound-notifier`.
 
 Node.js 26.8.1, Pi 0.87.1 und macOS `/usr/bin/afplay` wurden lokal festgestellt. Direkter Soundplayer-Smoke-Test `afplay -v 0.5 /System/Library/Sounds/Pop.aiff` — PASS. Der vollständige Lifecycle-zu-Audio-Smoke-Test in einer echten Pi-Sitzung im PyCharm-Terminal bleibt offen.
 
