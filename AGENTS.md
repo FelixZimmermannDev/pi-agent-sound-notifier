@@ -1,81 +1,39 @@
-# Chess Analysis Coach Project Instructions
+# Agentic Harness – Einstieg
 
-## Delivery mode
+> - **Typ:** Einstieg
+> - **Zuständigkeit:** Aufgaben den zuständigen Harness-Dateien zuordnen.
+> - **Gilt bei:** Arbeit in diesem Repository und später in Projekten mit diesem Harness.
+> - **Ladebeziehungen:** Immer `agentic-harness/harness/core.md` und `agentic-harness/harness/project.md` lesen; weitere Dateien nur nach den Auslösern unten.
+> - **Nicht zuständig:** Den Arbeitsablauf, Produktfakten oder Qualitätsregeln hier erneut erklären.
 
-- Treat this repository as a practical tool to be completed and used, not as a guided-learning project.
-- Default to direct, autonomous implementation. Felix does not need to write code, review test syntax, answer teaching questions, or participate in incremental implementation steps.
-- Convert broad requests into sensible technical requirements and proceed without approval when assumptions are low-risk and reversible.
-- Ask only when unresolved ambiguity would materially change user-visible behavior, safety, cost, or the long-term architecture.
-- Prefer completing a coherent vertical slice in one pass: implementation, errors, tests, configuration, documentation, and verification.
-- Do not turn work into a quiz or require an active learning check. Explain only important decisions, trade-offs, and usage in the final report.
-- Optimize for the shortest reliable path to a usable application, not for maximum abstraction or ceremonial process.
+## Wohin mit der Aufgabe?
 
-## Project purpose and boundaries
+| Auslöser | Zusätzlich lesen | Zweck |
+|---|---|---|
+| Project Init für ein neues, leeres Produktprojekt beauftragt oder erste Produktumsetzung bei `Pending Project Init` | `agentic-harness/harness/init.md` | Projektziel und Grenzen klären; nicht allein wegen Harness-Engineering ausführen. |
+| Produktarchitektur, Produktbausteine oder deren Dateistruktur | `agentic-harness/docs/architecture.md` | Produktaufbau und Abhängigkeiten prüfen. |
+| Codeänderung oder Refactor | `agentic-harness/docs/code.md` | Projektbezogene Codekonventionen prüfen. |
+| Testplanung, Teständerung oder Testlauf | `agentic-harness/docs/testing.md` | Testkonventionen prüfen; Befehle stehen im Projektprofil. |
+| Größere offene Idee | `agentic-harness/ideas/S000-readme.md` | Idee klären; bei Neuanlage `agentic-harness/harness/templates/idea.md` verwenden. |
+| Neues oder geändertes Nutzerverhalten | `agentic-harness/specs/S000-readme.md` und betroffene Spec | Beauftragtes Soll prüfen; bei Neuanlage `agentic-harness/harness/templates/spec.md` verwenden. |
+| Abschluss einer Änderung | `agentic-harness/harness/verification/gate.md` | Auftrag und Nachweise prüfen; bei Fehlschlag `agentic-harness/harness/verification/fail.md`. |
+| Harness erstmals einordnen oder Project Init durchführen | `agentic-harness/harness-map.md` | Dateirollen und geplante Ladewege verstehen; tatsächliche Pfade prüfen. |
+| Markdown-Datei neu anlegen oder befüllen | `agentic-harness/document-contract.md`; bei neuer Datei oder Rolle auch `agentic-harness/harness-map.md` | Passende Form, Verweise und gegebenenfalls Kopf gegen tatsächliche Rollen und Pfade prüfen. |
+| Harness-Pfade, Dateirollen oder Ladeauslöser ändern | `agentic-harness/harness-map.md` und `agentic-harness/document-contract.md` | Betroffene Dokumentköpfe, Einstieg und Verweise gemeinsam abgleichen. |
+| Beim Einsatz im Zielprojekt fällt eine möglicherweise universelle Stärke, Schwäche oder Unklarheit des Harnesses auf | `agentic-harness/harness-learnings.md` | Beobachtung lokal als Kandidat festhalten; Projektfakten bleiben in den zuständigen Projektdateien. |
 
-- Build a dependable local chess assistant that recommends and explains moves during permitted offline practice.
-- Support live recommendations only for solo analysis, play against a local computer, or assisted training where every participant explicitly agrees.
-- Never implement active-online-game polling, chess-site screen reading, browser automation, or secret assistance in competitive human games.
-- Chess.com data may be retrieved only through documented public endpoints and analyzed after the online game has ended.
-- Keep the global `C:\Users\Felix\.pi\agent\AGENTS.md` unchanged unless Felix explicitly requests a global change.
+Treffen mehrere Auslöser zu, lies die betreffenden Dateien. Lade nicht alle Docs auf Vorrat. Neue thematische Projekt-Docs brauchen einen klaren Auslöser im Einstieg; verweise auf Regeln statt sie hier zu kopieren.
 
-## Definition of done
+Vor dem Umbenennen, Verschieben oder Löschen einer Harness-Datei suche repo-weit nach Verweisen auf Pfad und Dateinamen. Aktualisiere betroffene Verweise und Ladewege im selben Schritt. Prüfe danach verbliebene Pfade **und die Köpfe der betroffenen Dateien** gegen den tatsächlichen Baum. Dasselbe gilt, wenn sich Zuständigkeit oder Ladeauslöser ohne Dateiumzug ändern. Nach manuellen Änderungen zuerst den Ist-Stand prüfen; Markdown aktualisiert sich nicht selbst.
 
-A requested feature is complete only when, as applicable:
+## Aktiver Stand und Pfade
 
-- the user-visible workflow is implemented end to end;
-- common invalid input and external-tool failures produce understandable messages;
-- focused automated tests cover deterministic behavior;
-- relevant integration or smoke checks use the real boundary when available;
-- the practical full test suite passes;
-- installation and execution commands are documented and verified;
-- remaining limitations and unverified external assumptions are reported clearly.
+`agentic-harness/harness/core.md` regelt den Arbeits- und Entscheidungsfluss. Landkarte und Dokumentenvertrag sind Referenzen für Orientierung und Markdown-Pflege. Die Landkarte zeigt geplante Root-Pfade; bis zur Migration sind die tatsächlichen `agentic-harness/`-Pfade in dieser Datei maßgeblich.
 
-Never claim that the application works solely because its architecture looks correct or mocked tests pass.
+Produktcode und Produkttests liegen außerhalb der Harness-Dokumente. Bei Widersprüchen zwischen Auftrag, bestehenden Projektanweisungen und Harness kläre die Zuständigkeit vor riskanten Änderungen. Ändere nicht stillschweigend weitere Dateien, nur weil sie verlinkt sind.
 
-## Context loading
+Bei Commits beschreibt der Betreff in einem kurzen, konkreten Satz die tatsächliche Änderung. Vermeide ungenaue Betreffe wie „Update files“.
 
-- Before changing or evaluating architecture, responsibilities, dependencies, engine boundaries, or significant refactorings, read `docs/architecture.md`.
-- Before deciding whether tests add value or designing, writing, reviewing, running, or changing tests, read `docs/testing.md`.
-- For Clean Code reviews or behavior-preserving refactoring, load the global `clean-code-coach` skill and apply `docs/architecture.md`.
-- Do not load detailed architecture or testing documents for unrelated questions or narrow mechanical work.
+Bei Project Init nur nötige zusätzliche Projektverweise unter der folgenden Überschrift eintragen. Universelle Regeln oben nicht kopieren.
 
-## Project-local harness feedback loop
-
-- The `Project Harness Feedback Loop` lives only under `.pi/extensions/project-harness-feedback-loop/` in this repository and is activated with `/guarded <implementation request>`.
-- Keep the global `C:\Users\Felix\.pi\agent\AGENTS.md`, global extensions, credentials, models, and settings unchanged.
-- A guarded task snapshots the original request and loaded requirements, lets the normal coding agent implement and verify the change, then uses an isolated read-only evaluator to compare those original inputs directly with the resulting code and tests.
-- Treat evaluator corrections as advisory: output corrections target code or tests, while interface corrections target `.pi/extensions/project-harness-feedback-loop/prompts/interface.md`. Do not automatically rewrite canonical requirements or apply evaluator corrections.
-- Raw guarded-run evidence belongs under the ignored `output/project-harness-feedback-loop/` directory, not in durable context documents.
-
-## Architecture and implementation standards
-
-- Use a small, professional layered design with explicit boundaries between position input, application coordination, Stockfish integration, and presentation.
-- Keep chess rules and recommendation logic independent of terminal formatting and future interfaces.
-- Use `python-chess` for board, move, PGN, and UCI engine integration; do not recreate chess rules.
-- Keep external processes and future network access behind narrow adapters so deterministic behavior remains testable.
-- Prefer dependency injection at external boundaries, explicit typed result values, actionable domain-specific errors, and guaranteed resource cleanup.
-- Keep state ownership and mutation explicit. Do not mutate caller-owned boards unexpectedly or rely on hidden global state.
-- Keep analysis limits explicit so engine work is bounded.
-- Keep the Stockfish executable path configurable and do not commit binaries, credentials, generated output, or machine-specific paths.
-- Add abstractions only when they enforce a real boundary, remove demonstrated duplication, or support a concrete second implementation.
-- Preserve unrelated user changes and make the smallest coherent change that completes the requested workflow.
-
-## Product sequence
-
-- First deliver a stable terminal workflow: FEN input → bounded Stockfish analysis → legal candidate moves and understandable output.
-- Then add an interactive local move session if useful.
-- Defer camera/screenshot recognition, GUI, persistence, and completed-game chess.com import until the core workflow works end to end.
-- Do not create placeholders for deferred features.
-
-## Verification and reporting
-
-- Run the narrowest relevant checks during development and the full practical suite before finishing.
-- Test deterministic application behavior without a real engine and maintain a small real-Stockfish smoke path once Stockfish is configured.
-- Distinguish clearly between unit-tested behavior, real integration verification, failures, and checks that could not be run.
-- Final reports should be concise: result, important decisions, commands/results, and remaining limitations.
-
-## Context maintenance
-
-- Keep `docs/architecture.md` and `docs/testing.md` as current durable guidance, not task logs.
-- Update them only after an implemented architectural change or explicitly confirmed durable decision makes them inaccurate.
-- Keep temporary plans, session handovers, and speculative designs out of `AGENTS.md` and the context documents.
+## Projektspezifische Ergänzungen

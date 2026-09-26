@@ -1,23 +1,7 @@
-# Python
+.DS_Store
+.idea/
 __pycache__/
 *.py[cod]
-.pytest_cache/
-.ruff_cache/
-
-# Virtual environments
 .venv/
-
-# Build output
-build/
-dist/
-*.egg-info/
-
-# Local configuration and generated analysis
+venv/
 .env
-output/
-
-# Editors / operating systems
-.idea/
-.vscode/
-.DS_Store
-Thumbs.db
