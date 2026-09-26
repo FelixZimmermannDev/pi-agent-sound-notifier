@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { basename } from "node:path";
+import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 
 const COMPLETION_SOUND = "/System/Library/Sounds/Pop.aiff";
 const AFPLAY = "/usr/bin/afplay";
@@ -23,16 +24,33 @@ function playCompletionSound(): void {
   }
 }
 
+function setTerminalTabStatus(ctx: ExtensionContext, completed: boolean): void {
+  if (ctx.mode !== "tui") return;
+
+  const projectName = basename(ctx.cwd) || "project";
+  const marker = completed ? "🟡" : "⚪";
+  try {
+    ctx.ui.setTitle(`${marker} ${projectName} · Pi`);
+  } catch (error) {
+    console.warn("[pi-agent-sound-notifier] Could not update the terminal tab title.", error);
+  }
+}
+
 export function registerCompletionSound(
   pi: Pick<ExtensionAPI, "on">,
   playSound: () => void = playCompletionSound,
 ): void {
-  pi.on("agent_settled", () => {
+  pi.on("agent_start", (_event, ctx) => {
+    setTerminalTabStatus(ctx, false);
+  });
+
+  pi.on("agent_settled", (_event, ctx) => {
     try {
       playSound();
     } catch (error) {
       console.warn("[pi-agent-sound-notifier] Completion sound failed.", error);
     }
+    setTerminalTabStatus(ctx, true);
   });
 }
 

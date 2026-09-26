@@ -1,7 +1,7 @@
 # Testing – Auswahl und Praxis der Produktprüfungen
 
 > - **Typ:** Projektdoku
-> - **Status:** Unit-Tests und Typprüfung eingerichtet; manueller Live-Smoke-Test offen.
+> - **Status:** Unit-Tests und Typprüfung eingerichtet; visueller PyCharm-Smoke-Test offen.
 > - **Zuständigkeit:** Universelle Auswahlhilfe für Tests bieten und die begründete Teststrategie des Projekts festhalten.
 > - **Gilt bei:** Project Init sowie Testplanung, Teständerung und Testausführung.
 > - **Ladebeziehungen:** Zuerst `agentic-harness/harness/project.md` für Ziel, Risiken und eingerichtete Befehle lesen. Für Bausteine und Grenzen bei Bedarf `agentic-harness/docs/architecture.md`, für Stack und Werkzeugwahl `agentic-harness/docs/code.md`, bei beauftragtem Verhalten die betroffene Spec unter `agentic-harness/specs/`. Zum Abschluss `agentic-harness/harness/verification/gate.md`.
@@ -54,7 +54,7 @@ Werkzeuge anhand des **gewählten** Stacks, der zu prüfenden Grenze und verfüg
 
 ### Verhalten, Risiken und gewählte Tests
 
-Unit-Tests prüfen, dass der `agent_settled`-Handler nur für dieses Ereignis registriert ist, genau einmal den injizierten Audioadapter aufruft und synchrone Audiofehler toleriert. Ein manueller Smoke-Test in einer echten Pi-Sitzung muss noch das Zusammenspiel mit Pi, PyCharm-Terminal und macOS-Audio belegen; Mock-Tests allein belegen das nicht.
+Unit-Tests prüfen, dass `agent_start` und `agent_settled` den neutralen beziehungsweise gelben Tabtitel setzen, nur den interaktiven TUI-Modus verändern, der Audioadapter einmal läuft und synchrone Audiofehler toleriert. Ein manueller Smoke-Test muss noch belegen, dass PyCharm den OSC-Titel tatsächlich im Terminal-Tab darstellt und der Nutzer den Indikator korrekt versteht.
 
 ### Werkzeuge, Teststruktur und Isolation
 
@@ -62,4 +62,4 @@ Die Tests liegen in `tests/agent-sound-notifier.test.ts`; sie verwenden Node.js 
 
 ### Ausführungsanlässe und offene Nachweise
 
-Nach Änderungen am Handler oder Audioadapter laufen `npm test` und `npm run typecheck`; vor einem Release zusätzlich ein manueller Live-Smoke-Test mit einem abgeschlossenen Pi-Agent-Lauf unter macOS. Unit-Tests, Typprüfung und direkter macOS-`afplay`-Smoke-Test bestanden; vollständiger Live-Smoke-Test vom Pi-Lifecycle bis zum PyCharm-Terminal-Audio noch offen. Befehle und aktuelle Ergebnisse stehen in `agentic-harness/harness/project.md`.
+Nach Änderungen am Handler oder Audioadapter laufen `npm test` und `npm run typecheck`; vor einem Release zusätzlich ein manueller Live-Smoke-Test mit einem abgeschlossenen Pi-Agent-Lauf unter macOS. Unit-Tests, Typprüfung und direkter macOS-`afplay`-Smoke-Test bestanden; vollständiger Live-Smoke-Test vom Pi-Lifecycle über den Ton bis zur sichtbaren PyCharm-Tabmarkierung noch offen. Befehle und aktuelle Ergebnisse stehen in `agentic-harness/harness/project.md`.

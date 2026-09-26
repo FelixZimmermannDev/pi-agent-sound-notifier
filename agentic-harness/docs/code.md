@@ -19,7 +19,7 @@ Die Extension ist TypeScript für die Pi Extension API. Sie wurde mit Pi 0.87.1 
 
 ### Codekonventionen
 
-Kleiner, klar abgegrenzter Extension-Einstieg. Aufruf des Audio-Players mit festgelegtem ausführbarem Programm und Argumenten, ohne Shell-Interpolation. Audiofehler abfangen, damit sie den Pi-Agent-Lauf nicht stören. Abhängigkeiten nur ergänzen, falls ein konkreter Bedarf entsteht.
+Kleiner, klar abgegrenzter Extension-Einstieg. Aufruf des Audio-Players mit festgelegtem ausführbarem Programm und Argumenten, ohne Shell-Interpolation. Den Terminaltitel nur im `tui`-Modus über `ctx.ui.setTitle()` setzen; Audio- und UI-Fehler abfangen, damit sie den Pi-Agent-Lauf nicht stören. Abhängigkeiten nur ergänzen, falls ein konkreter Bedarf entsteht.
 
 ### Qualitätswerkzeuge
 

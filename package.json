@@ -1,6 +1,6 @@
 {
   "name": "pi-agent-sound-notifier",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "description": "A lightweight Pi coding-agent extension that plays a sound when an agent run settles.",

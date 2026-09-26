@@ -1,7 +1,7 @@
 # Architektur – Bausteine und Datenfluss
 
 > - **Typ:** Projektdoku
-> - **Status:** Erster Meilenstein implementiert; echter `afplay`-Test bestanden; vollständiger Pi-Smoke-Test noch offen.
+> - **Status:** Sound und Tabtitel-Indikator implementiert; Unit-Tests bestanden; echter PyCharm-Tab-Smoke-Test noch offen.
 > - **Zuständigkeit:** Entschiedene Bausteine, ihre Aufgaben und Abhängigkeiten für den aktuellen Meilenstein erklären.
 > - **Gilt bei:** Project Init sowie Architektur-, Schnittstellen- oder Strukturfragen.
 > - **Ladebeziehungen:** Vorher `agentic-harness/harness/project.md` für Ziel und Grenzen lesen. Bei Codekonventionen zusätzlich `agentic-harness/docs/code.md`; bei Teststruktur `agentic-harness/docs/testing.md`.
@@ -15,21 +15,21 @@ Ist, entschiedenes Ziel und offene Möglichkeiten nicht verwechseln. Bausteine n
 
 ### Bausteine und Verantwortlichkeiten
 
-- **Pi lifecycle handler:** registriert einen Listener für `agent_settled`; beendet Agent-Arbeit wird damit zuverlässiger erkannt als über `agent_end`, das vor möglichen automatischen Fortsetzungen ausgelöst werden kann.
-- **Audio adapter:** startet `/usr/bin/afplay` mit dem macOS-Systemton `/System/Library/Sounds/Pop.aiff` bei halber Lautstärke. Das vermeidet ein gebündeltes Audio-Asset und zusätzliche Laufzeitabhängigkeiten.
+- **Pi lifecycle handler:** setzt bei `agent_start` den Terminaltitel auf einen neutralen Punkt und bei `agent_settled` auf einen gelben Punkt. Das endgültige Ereignis wird statt `agent_end` verwendet, weil Zwischenläufe automatisch fortgesetzt werden können.
+- **Audio adapter:** startet `/usr/bin/afplay` mit `/System/Library/Sounds/Pop.aiff` bei halber Lautstärke.
+- **Terminal title API:** `ctx.ui.setTitle()` setzt den OSC-Terminaltitel, den PyCharm als Titel des jeweiligen Terminal-Tabs anzeigen kann.
 
-Die Extension ist ein TypeScript-Modul, das Pi lädt; PyCharm dient als Entwicklungsumgebung und stellt keine eigene Extension-Schnittstelle bereit, die hier gebraucht wird.
+Die Extension ist ein TypeScript-Modul, das Pi lädt; ein eigenes PyCharm-Plugin oder eine IPC-Verbindung ist dafür nicht nötig.
 
 ### Datenfluss und Schnittstellen
 
 ```text
-Pi agent lifecycle
-  → agent_settled handler
-  → lokaler Audio-Player (macOS)
-  → kurzer Completion-Sound
+agent_start ──────────────→ ⚪ Projekt · Pi (Terminaltitel)
+                                  │
+agent_settled ────────────→ 🟡 Projekt · Pi + kurzer macOS-Sound
 ```
 
-Der Handler benötigt keine Prompt-, Transcript- oder Modellinformationen. Fehler des Audio-Players dürfen den Agent-Lauf nicht beeinflussen.
+Der Titelindikator gilt nur für den interaktiven TUI-Modus. Es werden keine Prompt-, Transcript- oder Modellinformationen benötigt. Fehler beim Audio oder Setzen des Titels dürfen den Agent-Lauf nicht beeinflussen.
 
 ### Entscheidungen und offene Punkte
 
