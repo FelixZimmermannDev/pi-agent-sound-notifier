@@ -1,7 +1,7 @@
 # Architektur – Bausteine und Datenfluss
 
 > - **Typ:** Projektdoku
-> - **Status:** Erster Meilenstein festgelegt; Umsetzung noch ausstehend.
+> - **Status:** Erster Meilenstein implementiert; echter `afplay`-Test bestanden; vollständiger Pi-Smoke-Test noch offen.
 > - **Zuständigkeit:** Entschiedene Bausteine, ihre Aufgaben und Abhängigkeiten für den aktuellen Meilenstein erklären.
 > - **Gilt bei:** Project Init sowie Architektur-, Schnittstellen- oder Strukturfragen.
 > - **Ladebeziehungen:** Vorher `agentic-harness/harness/project.md` für Ziel und Grenzen lesen. Bei Codekonventionen zusätzlich `agentic-harness/docs/code.md`; bei Teststruktur `agentic-harness/docs/testing.md`.
@@ -16,7 +16,7 @@ Ist, entschiedenes Ziel und offene Möglichkeiten nicht verwechseln. Bausteine n
 ### Bausteine und Verantwortlichkeiten
 
 - **Pi lifecycle handler:** registriert einen Listener für `agent_settled`; beendet Agent-Arbeit wird damit zuverlässiger erkannt als über `agent_end`, das vor möglichen automatischen Fortsetzungen ausgelöst werden kann.
-- **Audio adapter:** spielt eine feste, mitgelieferte kurze Audiodatei lokal auf macOS ab. Die erste Version soll ohne Drittanbieter-Laufzeitabhängigkeit auskommen.
+- **Audio adapter:** startet `/usr/bin/afplay` mit dem macOS-Systemton `/System/Library/Sounds/Pop.aiff` bei halber Lautstärke. Das vermeidet ein gebündeltes Audio-Asset und zusätzliche Laufzeitabhängigkeiten.
 
 Die Extension ist ein TypeScript-Modul, das Pi lädt; PyCharm dient als Entwicklungsumgebung und stellt keine eigene Extension-Schnittstelle bereit, die hier gebraucht wird.
 
@@ -33,4 +33,4 @@ Der Handler benötigt keine Prompt-, Transcript- oder Modellinformationen. Fehle
 
 ### Entscheidungen und offene Punkte
 
-Für den ersten Meilenstein wird die Audioausgabe auf macOS begrenzt. Soundformat und konkrete Prozessansteuerung werden bei der Implementierung festgelegt. Windows/Linux, Remote-Audio-Relay und Benutzereinstellungen sind vertagt.
+Die Implementation liegt in `extensions/agent-sound-notifier.ts` und wird als persönliches Pi-Paket geladen. Audioausgabe ist im ersten Meilenstein auf macOS begrenzt. Windows/Linux, Remote-Audio-Relay und Benutzereinstellungen sind vertagt.

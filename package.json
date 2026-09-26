@@ -1,0 +1,27 @@
+{
+  "name": "pi-agent-sound-notifier",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A lightweight Pi coding-agent extension that plays a sound when an agent run settles.",
+  "keywords": ["pi-package"],
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "scripts": {
+    "test": "tsx --test tests/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*"
+  },
+  "devDependencies": {
+    "@earendil-works/pi-coding-agent": "0.87.1",
+    "@types/node": "^22.19.1",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3"
+  },
+  "pi": {
+    "extensions": ["./extensions/agent-sound-notifier.ts"]
+  }
+}

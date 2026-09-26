@@ -1,7 +1,7 @@
 # Testing – Auswahl und Praxis der Produktprüfungen
 
 > - **Typ:** Projektdoku
-> - **Status:** Teststrategie für den ersten Meilenstein festgelegt; Checks noch nicht eingerichtet.
+> - **Status:** Unit-Tests und Typprüfung eingerichtet; manueller Live-Smoke-Test offen.
 > - **Zuständigkeit:** Universelle Auswahlhilfe für Tests bieten und die begründete Teststrategie des Projekts festhalten.
 > - **Gilt bei:** Project Init sowie Testplanung, Teständerung und Testausführung.
 > - **Ladebeziehungen:** Zuerst `agentic-harness/harness/project.md` für Ziel, Risiken und eingerichtete Befehle lesen. Für Bausteine und Grenzen bei Bedarf `agentic-harness/docs/architecture.md`, für Stack und Werkzeugwahl `agentic-harness/docs/code.md`, bei beauftragtem Verhalten die betroffene Spec unter `agentic-harness/specs/`. Zum Abschluss `agentic-harness/harness/verification/gate.md`.
@@ -54,12 +54,12 @@ Werkzeuge anhand des **gewählten** Stacks, der zu prüfenden Grenze und verfüg
 
 ### Verhalten, Risiken und gewählte Tests
 
-Der wichtigste Nachweis ist, dass ein abgeschlossener Agent-Lauf genau einen kurzen Sound auslöst. Unit-/Modultests sollen sicherstellen, dass der `agent_settled`-Handler den Audioadapter aufruft und Audiofehler toleriert. Ein manueller Smoke-Test in einer echten Pi-Sitzung belegt das Zusammenspiel mit Pi und macOS-Audio; Mock-Tests allein belegen das nicht.
+Unit-Tests prüfen, dass der `agent_settled`-Handler nur für dieses Ereignis registriert ist, genau einmal den injizierten Audioadapter aufruft und synchrone Audiofehler toleriert. Ein manueller Smoke-Test in einer echten Pi-Sitzung muss noch das Zusammenspiel mit Pi, PyCharm-Terminal und macOS-Audio belegen; Mock-Tests allein belegen das nicht.
 
 ### Werkzeuge, Teststruktur und Isolation
 
-Testframework, TypeScript-Typprüfung und Teststruktur werden bei der Umsetzung passend zu den tatsächlich gewählten Paketen festgelegt. Audio-Prozessaufrufe sollen in Unit-Tests ersetzt werden, damit Tests keinen realen Ton abspielen.
+Die Tests liegen in `tests/agent-sound-notifier.test.ts`; sie verwenden Node.js `node:test` über `tsx`. Tests injizieren einen Fake-Audioadapter und spielen selbst keinen Ton ab. `npm run typecheck` prüft Extension und Tests.
 
 ### Ausführungsanlässe und offene Nachweise
 
-Checks laufen nach ihrer Einrichtung bei Änderungen am Handler oder Audioadapter sowie vor einem Release. Aktuell sind keine Tests oder Typprüfungen eingerichtet; der Pi/macOS-Smoke-Test ist offen. Befehle, Geltungsbereich und Ergebnisse werden nach Einrichtung in `agentic-harness/harness/project.md` festgehalten.
+Nach Änderungen am Handler oder Audioadapter laufen `npm test` und `npm run typecheck`; vor einem Release zusätzlich ein manueller Live-Smoke-Test mit einem abgeschlossenen Pi-Agent-Lauf unter macOS. Unit-Tests, Typprüfung und direkter macOS-`afplay`-Smoke-Test bestanden; vollständiger Live-Smoke-Test vom Pi-Lifecycle bis zum PyCharm-Terminal-Audio noch offen. Befehle und aktuelle Ergebnisse stehen in `agentic-harness/harness/project.md`.

@@ -1,7 +1,7 @@
 # Projektprofil – Grenzen und Befehle
 
 > - **Typ:** Projektdoku
-> - **Status:** Project Init abgeschlossen; Produktumsetzung noch ausstehend.
+> - **Status:** Erster Meilenstein umgesetzt; manueller Pi-Smoke-Test noch offen.
 > - **Zuständigkeit:** Den aktuellen Meilenstein, Projektgrenzen und ausführbare Befehle festhalten.
 > - **Gilt bei:** Einordnung jeder Aufgabe über `AGENTS.md`; projektspezifisches Befüllen bei `agentic-harness/harness/init.md`.
 > - **Ladebeziehungen:** Einstieg über `AGENTS.md` und `agentic-harness/harness/core.md`. Architektur bei Bedarf: `agentic-harness/docs/architecture.md`; Testpraxis: `agentic-harness/docs/testing.md`.
@@ -25,8 +25,15 @@ Die Extension läuft im Pi-Prozess und nutzt dessen Lifecycle-API. Audio wird lo
 
 ### Start und Prüfstatus
 
-Implementierung, Installationsbefehle und automatisierte Checks sind noch nicht eingerichtet. Nach der Umsetzung sollen gezielte Tests den Lifecycle-Handler und die Soundausgabe prüfen; ein manueller Smoke-Test erfolgt in einer echten Pi-Sitzung im PyCharm-Terminal. Befehle werden nach Einrichtung ergänzt.
+Am Projektroot:
+
+- `npm install` — Abhängigkeiten installiert.
+- `npm test` — PASS: 2 Unit-Tests.
+- `npm run typecheck` — PASS: TypeScript-Prüfung.
+- `pi install "$(pwd)"` — persönliche Pi-Installation ausgeführt; `pi list` zeigt das Paket `../../Code/python/chess-coach`.
+
+Node.js 26.8.1, Pi 0.87.1 und macOS `/usr/bin/afplay` wurden lokal festgestellt. Direkter Soundplayer-Smoke-Test `afplay -v 0.5 /System/Library/Sounds/Pop.aiff` — PASS. Der vollständige Lifecycle-zu-Audio-Smoke-Test in einer echten Pi-Sitzung im PyCharm-Terminal bleibt offen.
 
 ### Nächster Schritt und offene Entscheidungen
 
-Nächster Schritt: Extension, gebündelten kurzen Sound und Tests implementieren. Eine spätere plattformübergreifende Audioausgabe und konfigurierbare Soundoptionen bleiben vertagt.
+Pi nach der Installation neu starten und einen Agent-Lauf im PyCharm-Terminal abschließen, um die tatsächliche Lifecycle-zu-Audio-Kette manuell zu prüfen. Windows/Linux, Remote-Audio-Relay und konfigurierbare Sounds bleiben vertagt.

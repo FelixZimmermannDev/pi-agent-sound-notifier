@@ -1,7 +1,7 @@
 # Code – Stack und Konventionen
 
 > - **Typ:** Projektdoku
-> - **Status:** TypeScript/Pi-Extension als Stack festgelegt; Implementierung noch ausstehend.
+> - **Status:** TypeScript/Pi-Extension implementiert; Node.js 22.19+ vorgesehen.
 > - **Zuständigkeit:** Den gewählten Stack und geltende Regeln für Anwendungscode beschreiben.
 > - **Gilt bei:** Project Init sowie Codeänderungen und Refactorings.
 > - **Ladebeziehungen:** Vorher `agentic-harness/harness/project.md` lesen. Bei Modulgrenzen `agentic-harness/docs/architecture.md`; bei Testcode `agentic-harness/docs/testing.md` zusätzlich lesen.
@@ -15,7 +15,7 @@ Nur Regeln für den tatsächlich gewählten Stack festhalten. Kandidaten sind ke
 
 ### Stack und Abhängigkeiten
 
-Die Extension wird in TypeScript für Pi geschrieben und verwendet die Pi Extension API. Pi lädt lokale TypeScript-Extensions direkt; der genaue Mindeststand der Pi-Laufzeit ist bei der Implementierung zu prüfen. Das Zielsystem für den ersten Meilenstein ist macOS. Eine zusätzliche Audio-Bibliothek ist nicht vorgesehen.
+Die Extension ist TypeScript für die Pi Extension API. Sie wurde mit Pi 0.87.1 geladen und Node.js 26.8.1 entwickelt; `package.json` verlangt Node.js 22.19 oder neuer. Pi lädt die TypeScript-Extension aus dem lokalen Paket. Zielsystem ist macOS; ein Audio-Framework oder weitere Laufzeitabhängigkeiten werden nicht benötigt.
 
 ### Codekonventionen
 
@@ -23,4 +23,4 @@ Kleiner, klar abgegrenzter Extension-Einstieg. Aufruf des Audio-Players mit fest
 
 ### Qualitätswerkzeuge
 
-TypeScript-Typprüfung und automatisierte Tests sind vorgesehen, aber noch nicht eingerichtet. Versionen und konkrete Werkzeuge werden bei der Implementierung festgelegt.
+TypeScript 5.9.3, `tsx` 4.23.15 und Node.js `node:test` werden als Entwicklungswerkzeuge verwendet. Die Befehle `npm run typecheck` und `npm test` sind eingerichtet.
