@@ -1,7 +1,7 @@
 # Architektur – Bausteine und Datenfluss
 
 > - **Typ:** Projektdoku
-> - **Status:** Pending Project Init; noch keine Produktarchitektur bestätigt.
+> - **Status:** Erster Meilenstein festgelegt; Umsetzung noch ausstehend.
 > - **Zuständigkeit:** Entschiedene Bausteine, ihre Aufgaben und Abhängigkeiten für den aktuellen Meilenstein erklären.
 > - **Gilt bei:** Project Init sowie Architektur-, Schnittstellen- oder Strukturfragen.
 > - **Ladebeziehungen:** Vorher `agentic-harness/harness/project.md` für Ziel und Grenzen lesen. Bei Codekonventionen zusätzlich `agentic-harness/docs/code.md`; bei Teststruktur `agentic-harness/docs/testing.md`.
@@ -15,12 +15,22 @@ Ist, entschiedenes Ziel und offene Möglichkeiten nicht verwechseln. Bausteine n
 
 ### Bausteine und Verantwortlichkeiten
 
-Noch offen (Project Init): Welche Teile braucht der erste Ablauf? Welche Aufgabe und Grenze hat jeder Teil, und wo liegt er im Projekt?
+- **Pi lifecycle handler:** registriert einen Listener für `agent_settled`; beendet Agent-Arbeit wird damit zuverlässiger erkannt als über `agent_end`, das vor möglichen automatischen Fortsetzungen ausgelöst werden kann.
+- **Audio adapter:** spielt eine feste, mitgelieferte kurze Audiodatei lokal auf macOS ab. Die erste Version soll ohne Drittanbieter-Laufzeitabhängigkeit auskommen.
+
+Die Extension ist ein TypeScript-Modul, das Pi lädt; PyCharm dient als Entwicklungsumgebung und stellt keine eigene Extension-Schnittstelle bereit, die hier gebraucht wird.
 
 ### Datenfluss und Schnittstellen
 
-Noch offen (Project Init): Herkunft der Eingaben, Zustand und Datenlebensdauer, sichtbares Ergebnis, Abhängigkeitsrichtung und externe Grenzen.
+```text
+Pi agent lifecycle
+  → agent_settled handler
+  → lokaler Audio-Player (macOS)
+  → kurzer Completion-Sound
+```
+
+Der Handler benötigt keine Prompt-, Transcript- oder Modellinformationen. Fehler des Audio-Players dürfen den Agent-Lauf nicht beeinflussen.
 
 ### Entscheidungen und offene Punkte
 
-Noch offen (Project Init): gewählte Lösung mit Grund; vorgeschlagene oder spätere Teile gesondert kennzeichnen.
+Für den ersten Meilenstein wird die Audioausgabe auf macOS begrenzt. Soundformat und konkrete Prozessansteuerung werden bei der Implementierung festgelegt. Windows/Linux, Remote-Audio-Relay und Benutzereinstellungen sind vertagt.

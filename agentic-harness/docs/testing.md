@@ -1,7 +1,7 @@
 # Testing – Auswahl und Praxis der Produktprüfungen
 
 > - **Typ:** Projektdoku
-> - **Status:** Pending Project Init; noch keine Testpraxis oder Anwendungstests bestätigt.
+> - **Status:** Teststrategie für den ersten Meilenstein festgelegt; Checks noch nicht eingerichtet.
 > - **Zuständigkeit:** Universelle Auswahlhilfe für Tests bieten und die begründete Teststrategie des Projekts festhalten.
 > - **Gilt bei:** Project Init sowie Testplanung, Teständerung und Testausführung.
 > - **Ladebeziehungen:** Zuerst `agentic-harness/harness/project.md` für Ziel, Risiken und eingerichtete Befehle lesen. Für Bausteine und Grenzen bei Bedarf `agentic-harness/docs/architecture.md`, für Stack und Werkzeugwahl `agentic-harness/docs/code.md`, bei beauftragtem Verhalten die betroffene Spec unter `agentic-harness/specs/`. Zum Abschluss `agentic-harness/harness/verification/gate.md`.
@@ -54,12 +54,12 @@ Werkzeuge anhand des **gewählten** Stacks, der zu prüfenden Grenze und verfüg
 
 ### Verhalten, Risiken und gewählte Tests
 
-Noch offen (Project Init): Für den ersten beauftragten Ablauf und wichtige Fehlerfälle jeweils Risiko oder Akzeptanzkriterium, gewählte Ebene **und** Testart, beobachtbare Erwartung, Begründung und Nachweisgrenze festhalten. Nicht gewählte relevante Ebenen nur bei einer echten Abwägung als vertagt begründen.
+Der wichtigste Nachweis ist, dass ein abgeschlossener Agent-Lauf genau einen kurzen Sound auslöst. Unit-/Modultests sollen sicherstellen, dass der `agent_settled`-Handler den Audioadapter aufruft und Audiofehler toleriert. Ein manueller Smoke-Test in einer echten Pi-Sitzung belegt das Zusammenspiel mit Pi und macOS-Audio; Mock-Tests allein belegen das nicht.
 
 ### Werkzeuge, Teststruktur und Isolation
 
-Noch offen (Project Init): Nach Stack- und Architekturentscheidung passende Werkzeuge und Versionen prüfen; tatsächlich gewählte Werkzeuge, Ablage, Testdaten, Fixtures, Isolation und benötigte reale Grenzen beschreiben. Vorgeschlagenes von Eingerichtetem unterscheiden.
+Testframework, TypeScript-Typprüfung und Teststruktur werden bei der Umsetzung passend zu den tatsächlich gewählten Paketen festgelegt. Audio-Prozessaufrufe sollen in Unit-Tests ersetzt werden, damit Tests keinen realen Ton abspielen.
 
 ### Ausführungsanlässe und offene Nachweise
 
-Noch offen (Project Init): Welche ausgewählten Prüfungen sollen bei welchen Änderungen oder während der Umsetzung laufen, welche vor dem Abschluss-Gate? Ausführungsanlässe nach Risiko und Aufwand festlegen; keine pauschale Regel „alle Tests nach jedem Edit“. Welche Prüfungen sind eingerichtet, welche noch nicht und was belegen sie nicht? **Befehle, Geltungsbereich und beobachteten Status** ausschließlich in `agentic-harness/harness/project.md` führen. `agentic-harness/harness/verification/implementation.md` hält Nachweise der konkreten Änderung fest; das Gate entscheidet über deren Suffizienz.
+Checks laufen nach ihrer Einrichtung bei Änderungen am Handler oder Audioadapter sowie vor einem Release. Aktuell sind keine Tests oder Typprüfungen eingerichtet; der Pi/macOS-Smoke-Test ist offen. Befehle, Geltungsbereich und Ergebnisse werden nach Einrichtung in `agentic-harness/harness/project.md` festgehalten.
