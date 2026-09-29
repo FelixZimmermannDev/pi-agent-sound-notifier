@@ -17,7 +17,7 @@ Dieses Profil bleibt kurz und nennt nur bestätigte Grenzen und tatsächlich ver
 
 `pi-agent-sound-notifier` ist eine kleine Pi-Extension für Nutzer, die Pi im PyCharm-Terminal einsetzen. Beim endgültigen Abschluss eines Agent-Laufs spielt sie einen kurzen Sound ab und markiert den Terminal-Tab im Titel gelb.
 
-Für Claude Code liefert `hooks/claude-stop-sound.sh` denselben Ton als `Stop`-Hook in `~/.claude/settings.json`; die Tab-Markierung gibt es nur in Pi.
+Für Claude Code liefert `hooks/claude-notify.sh` dasselbe Verhalten über Hooks in `~/.claude/settings.json`: `UserPromptSubmit` setzt den neutralen Punkt, `Stop` den gelben Punkt und den Ton. Der Titel wird an das Terminal-Gerät des nächsten Vorfahrenprozesses mit TTY geschrieben.
 
 Die TypeScript-Extension nutzt `agent_start` und `agent_settled` sowie Pi's `ctx.ui.setTitle()`. PyCharm kann Terminaltabs über OSC-Titel umbenennen. Zielsystem ist macOS. Ein eigenes PyCharm-Plugin, modellabhängige Integration, Desktop-Popups und zusätzliche Sounds sind nicht Teil des Meilensteins.
 

@@ -13,7 +13,8 @@
 - **AK4:** Das Verhalten ist unabhängig vom gewählten Modell oder Provider; die Extension liest oder verändert keine Prompt- oder Transcript-Inhalte.
 - **AK5:** Im interaktiven TUI wird beim Arbeiten ein neutraler Punkt im Terminaltitel und nach dem endgültigen Settling ein gelber Punkt angezeigt.
 - **AK6:** Beim Start des nächsten Agent-Laufs wechselt die Tab-Markierung vom gelben Abschluss-Punkt zurück zum neutralen Arbeitspunkt.
-- **AK7:** In Claude Code spielt ein `Stop`-Hook (`hooks/claude-stop-sound.sh`) nach jeder abgeschlossenen Antwort denselben Ton ab; ein Fehler des Players blockiert Claude Code nicht. Die Tab-Markierung bleibt Pi-spezifisch.
+- **AK7:** In Claude Code spielt ein `Stop`-Hook (`hooks/claude-notify.sh stop`) nach jeder abgeschlossenen Antwort denselben Ton ab; ein Fehler des Players blockiert Claude Code nicht.
+- **AK8:** Im Claude-Code-CLI setzt `UserPromptSubmit` den Terminaltitel auf den neutralen Punkt und `Stop` auf den gelben Punkt; ohne erreichbares Terminal (z. B. Desktop-App) wird nur der Ton abgespielt.
 
 ## Nachweise
 
@@ -22,5 +23,6 @@
 - **AK3:** Unit-Test mit synchron fehlschlagendem Audioadapter bestanden; asynchrone Playerfehler werden geloggt.
 - **AK4:** Codeprüfung bestätigt Lifecycle-only Verhalten ohne Modell-/Transcript-Zugriff.
 - **AK5/AK6:** Unit-Tests prüfen TUI-Titelwechsel und dass andere Modi keinen Terminaltitel ändern; der echte PyCharm-Tab muss noch manuell geprüft werden.
-- **AK7:** Hook-Skript per Pipe-Test ausgeführt (Exit 0, Ton hörbar); Hook-Eintrag per `jq` validiert. Live-Test in einer neuen Claude-Code-Sitzung offen.
+- **AK7:** Hook-Skript ausgeführt (Exit 0, Ton hörbar); Hook-Einträge per `jq` validiert.
+- **AK8:** Manueller Test im PyCharm-Terminal: direkt an das TTY geschriebener Titel erscheint und wird von Claude Code nicht überschrieben; Skript findet das TTY über die Prozesskette. Live-Durchlauf ⚪ → 🟡 in neuer Sitzung offen.
 - **Gate:** Noch offen, bis Audio und Tabtitel in einem vollständigen Pi-/PyCharm-Lauf manuell nachgewiesen sind.

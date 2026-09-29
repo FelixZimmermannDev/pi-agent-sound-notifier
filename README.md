@@ -21,18 +21,21 @@ This is a Pi extension, not a PyCharm plugin. It uses Pi's terminal-title API; [
 
 ## Claude Code
 
-Claude Code does not load Pi extensions. The same sound is available there through a `Stop` hook that runs `hooks/claude-stop-sound.sh`. Add it to `~/.claude/settings.json` (use the absolute path of your checkout):
+Claude Code does not load Pi extensions. The same behaviour is available there through two hooks that run `hooks/claude-notify.sh`: `UserPromptSubmit` sets a neutral dot in the terminal-tab title, `Stop` sets the yellow dot and plays the sound. Add them to `~/.claude/settings.json` (use the absolute path of your checkout):
 
 ```json
 {
   "hooks": {
+    "UserPromptSubmit": [
+      { "hooks": [ { "type": "command", "command": "/path/to/pi-agent-sound-notifier/hooks/claude-notify.sh start 2>/dev/null || true", "async": true } ] }
+    ],
     "Stop": [
-      { "hooks": [ { "type": "command", "command": "/path/to/pi-agent-sound-notifier/hooks/claude-stop-sound.sh 2>/dev/null || true", "async": true } ] }
+      { "hooks": [ { "type": "command", "command": "/path/to/pi-agent-sound-notifier/hooks/claude-notify.sh stop 2>/dev/null || true", "async": true } ] }
     ]
   }
 }
 ```
 
-Start a new Claude Code session (or open `/hooks` once) to load it. The terminal-tab dot is Pi-only; Claude Code manages its own tab title.
+Start a new Claude Code session (or open `/hooks` once) to load them. Hooks have no controlling terminal, so the script writes the title to the terminal device of the nearest ancestor process (the `claude` CLI). In the Claude desktop app there is no terminal, so only the sound plays.
 
 For development, run `npm install`, `npm test`, and `npm run typecheck`.
