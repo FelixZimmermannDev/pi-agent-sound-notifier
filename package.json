@@ -4,7 +4,14 @@
   "private": true,
   "type": "module",
   "description": "Plays a sound and marks the terminal tab when a coding agent (Pi or Claude Code) finishes.",
-  "keywords": ["pi-package"],
+  "keywords": [
+    "pi-package"
+  ],
+  "files": [
+    "extensions/",
+    "hooks/",
+    "README.md"
+  ],
   "engines": {
     "node": ">=22.19.0"
   },
@@ -22,6 +29,8 @@
     "typescript": "^5.9.3"
   },
   "pi": {
-    "extensions": ["./extensions/agent-sound-notifier.ts"]
+    "extensions": [
+      "./extensions/agent-sound-notifier.ts"
+    ]
   }
 }

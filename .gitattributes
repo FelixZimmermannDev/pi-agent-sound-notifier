@@ -1,0 +1,4 @@
+# Developer-only files: kept in the repository, left out of GitHub ZIP/release archives.
+agentic-harness/ export-ignore
+AGENTS.md export-ignore
+.gitattributes export-ignore
