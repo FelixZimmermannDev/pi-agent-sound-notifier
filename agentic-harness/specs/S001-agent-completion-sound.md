@@ -2,7 +2,7 @@
 
 - **State:** Modified
 - **Ziel und Nutzer:** Eine Person, die Coding Agents (Pi, Claude Code) vorwiegend im PyCharm-Terminal nutzt, soll durch einen kurzen Ton bemerken, wenn der Coding Agent vollständig fertig ist.
-- **Beschreibung:** Auf macOS wird nach Abschluss eines Agent-Laufs (Pi über die Extension, Claude Code über Hooks) genau ein kurzer lokaler Sound abgespielt und den zugehörigen PyCharm-Terminal-Tab vorübergehend mit einem gelben Punkt im Titel markiert.
+- **Beschreibung:** Auf macOS wird nach Abschluss eines Agent-Laufs (Pi über die Extension, Claude Code über Hooks) genau ein kurzer lokaler Sound abgespielt und der zugehörige PyCharm-Terminal-Tab vorübergehend mit einem gelben Punkt im Titel markiert.
 - **Nicht im Umfang:** PyCharm-Plugin, Modell-/Provider-spezifische Integration, Desktop-Popup, Sound bei Zwischen-Turns oder Berechtigungsfragen, Netzwerkzugriff und plattformübergreifende Audioausgabe.
 
 ## Akzeptanzkriterien
