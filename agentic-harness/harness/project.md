@@ -15,7 +15,7 @@ Dieses Profil bleibt kurz und nennt nur bestätigte Grenzen und tatsächlich ver
 
 ### Ziel und erster Meilenstein
 
-`pi-agent-sound-notifier` ist eine kleine Pi-Extension für Nutzer, die Pi im PyCharm-Terminal einsetzen. Beim endgültigen Abschluss eines Agent-Laufs spielt sie einen kurzen Sound ab und markiert den Terminal-Tab im Titel gelb.
+`agent-sound-notifier` benachrichtigt Nutzer von Coding Agents (Pi als Extension, Claude Code über Hooks), die im PyCharm-Terminal arbeiten. Beim endgültigen Abschluss eines Agent-Laufs spielt sie einen kurzen Sound ab und markiert den Terminal-Tab im Titel gelb.
 
 Für Claude Code liefert `hooks/claude-notify.sh` dasselbe Verhalten über Hooks in `~/.claude/settings.json`: `UserPromptSubmit` setzt den neutralen Punkt, `Stop` den gelben Punkt und den Ton. Der Titel wird an das Terminal-Gerät des nächsten Vorfahrenprozesses mit TTY geschrieben.
 
@@ -32,7 +32,7 @@ Am Projektroot:
 - `npm install` — Abhängigkeiten installiert.
 - `npm test` — PASS: 4 Unit-Tests.
 - `npm run typecheck` — PASS: TypeScript-Prüfung.
-- `pi install "$(pwd)"` — persönliche Pi-Installation ausgeführt; `pi list` zeigt das Paket `../../Code/python/pi-agent-sound-notifier`.
+- `pi install "$(pwd)"` — persönliche Pi-Installation ausgeführt; `pi list` zeigt das Paket `../../Code/python/agent-sound-notifier`.
 
 Node.js 26.8.1, Pi 0.87.1 und macOS `/usr/bin/afplay` wurden lokal festgestellt. Direkter Soundplayer-Smoke-Test `afplay -v 0.5 /System/Library/Sounds/Pop.aiff` — PASS. Der vollständige Lifecycle-zu-Audio-und-Tabtitel-Smoke-Test in einer echten Pi-Sitzung im PyCharm-Terminal bleibt offen.
 

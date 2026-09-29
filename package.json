@@ -1,9 +1,9 @@
 {
-  "name": "pi-agent-sound-notifier",
-  "version": "1.0.0",
+  "name": "agent-sound-notifier",
+  "version": "1.1.0",
   "private": true,
   "type": "module",
-  "description": "A lightweight Pi coding-agent extension that plays a sound when an agent run settles.",
+  "description": "Plays a sound and marks the terminal tab when a coding agent (Pi or Claude Code) finishes.",
   "keywords": ["pi-package"],
   "engines": {
     "node": ">=22.19.0"

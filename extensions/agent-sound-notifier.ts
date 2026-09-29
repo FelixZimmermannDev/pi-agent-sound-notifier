@@ -12,15 +12,15 @@ function playCompletionSound(): void {
     });
 
     player.on("error", (error) => {
-      console.warn(`[pi-agent-sound-notifier] Could not play completion sound: ${error.message}`);
+      console.warn(`[agent-sound-notifier] Could not play completion sound: ${error.message}`);
     });
     player.on("exit", (code) => {
       if (code !== 0) {
-        console.warn(`[pi-agent-sound-notifier] Audio player exited with code ${code}.`);
+        console.warn(`[agent-sound-notifier] Audio player exited with code ${code}.`);
       }
     });
   } catch (error) {
-    console.warn("[pi-agent-sound-notifier] Could not start the audio player.", error);
+    console.warn("[agent-sound-notifier] Could not start the audio player.", error);
   }
 }
 
@@ -32,7 +32,7 @@ function setTerminalTabStatus(ctx: ExtensionContext, completed: boolean): void {
   try {
     ctx.ui.setTitle(`${marker} ${projectName} · Pi`);
   } catch (error) {
-    console.warn("[pi-agent-sound-notifier] Could not update the terminal tab title.", error);
+    console.warn("[agent-sound-notifier] Could not update the terminal tab title.", error);
   }
 }
 
@@ -48,7 +48,7 @@ export function registerCompletionSound(
     try {
       playSound();
     } catch (error) {
-      console.warn("[pi-agent-sound-notifier] Completion sound failed.", error);
+      console.warn("[agent-sound-notifier] Completion sound failed.", error);
     }
     setTerminalTabStatus(ctx, true);
   });
